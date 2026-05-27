@@ -1,4 +1,4 @@
-package com.moviestogo
+package com.morton.moviestogo
 
 import android.app.Application
 import com.facebook.react.PackageList

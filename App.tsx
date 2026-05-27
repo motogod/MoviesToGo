@@ -4,40 +4,50 @@
  *
  * @format
  */
-
-import { NewAppScreen } from '@react-native/new-app-screen';
+import './global.css';
+import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import mobileAds from 'react-native-google-mobile-ads';
+import AppContainer from '@/navigator';
+
+// ** Store Imports
+import { store } from '@/store';
+import { Provider } from 'react-redux';
+import { persistStore } from 'redux-persist';
+import { PersistGate } from 'redux-persist/integration/react';
+
+// redux persist setting
+const persistor = persistStore(store);
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  const statusBarBackgroundColor = '#0B0B0F';
+
+  useEffect(() => {
+    mobileAds().initialize();
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <View style={styles.root}>
+            <StatusBar
+              backgroundColor={statusBarBackgroundColor}
+              barStyle={isDarkMode ? 'light-content' : 'light-content'}
+              translucent={false}
+            />
+            <AppContainer />
+          </View>
+        </PersistGate>
+      </Provider>
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
   },
 });

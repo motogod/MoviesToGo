@@ -1,0 +1,21 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/Inter_18pt-Light.ttf",
+      "sha1": "6b041e6fc61656b930d8ef638a0b9d6a0ac8e084"
+    },
+    {
+      "path": "src/assets/fonts/Inter_28pt-Regular.ttf",
+      "sha1": "6177ac91c6fb7df9b09beda7802ea15699a88703"
+    },
+    {
+      "path": "src/assets/fonts/Oswald-Light.ttf",
+      "sha1": "0d9835aaf684a043f75da67c26fca21435e6323e"
+    },
+    {
+      "path": "src/assets/fonts/Oswald-Regular.ttf",
+      "sha1": "10599ee4b500dead0a5fa3ef70bbbeb568c16c11"
+    }
+  ]
+}

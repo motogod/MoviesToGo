@@ -1,4 +1,8 @@
 {
   "name": "moviestogo",
-  "displayName": "moviestogo"
+  "displayName": "MoviesToGo 電影時刻",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-9540920888011810~7273796458",
+    "ios_app_id": "ca-app-pub-9540920888011810~9748293854"
+  }
 }
