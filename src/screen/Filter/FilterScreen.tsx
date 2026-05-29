@@ -861,7 +861,12 @@ const FilterScreen = () => {
           </Pressable>
         </View>
 
-        <View style={[styles.floatingActionWrap, { bottom: insets.bottom + 16, right: screenWidth / 2 - 97 }]}>
+        <View
+          style={[
+            styles.floatingActionWrap,
+            { bottom: insets.bottom + 16, right: screenWidth / 2 - 97 },
+          ]}
+        >
           <Animated.View
             pointerEvents={isFloatingActionExpanded ? 'box-none' : 'none'}
             style={[
@@ -1009,23 +1014,23 @@ const styles = StyleSheet.create({
   },
   ticketLabel: {
     color: '#B89456',
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: 'center',
     fontFamily: FONT_FAMILY.oswaldRegular,
   },
   ticketValue: {
     color: '#F4D28E',
-    fontSize: 17,
-    lineHeight: 22,
+    fontSize: 23,
+    lineHeight: 27,
     marginTop: 2,
     textAlign: 'center',
     fontFamily: FONT_FAMILY.oswaldRegular,
   },
   ticketSubValue: {
     color: '#8A8175',
-    fontSize: 8,
-    lineHeight: 11,
+    fontSize: 10,
+    lineHeight: 13,
     marginTop: 1,
     textAlign: 'center',
     fontFamily: FONT_FAMILY.oswaldRegular,
