@@ -164,101 +164,211 @@ type ShowTimeResultsListProps = {
   isFilterLoading: boolean;
   hasData: boolean;
   skeletonOpacity: Animated.AnimatedInterpolation<string | number>;
-  onMoviePress: (id: string | number | undefined, title: string, title_en?: string, thumb?: string) => void;
+  onMoviePress: (
+    id: string | number | undefined,
+    title: string,
+    title_en?: string,
+    thumb?: string,
+  ) => void;
+  onCinemaPress: (
+    cinemaId: string | number,
+    cinemaName: string,
+    movieId: string | number | undefined,
+    movieTitle: string,
+    movieTitleEn: string | undefined,
+    initialDate: string,
+  ) => void;
+  initialDate: string;
   paddingBottom: number;
 };
 
-const ShowTimeResultsList = memo(({
-  groupedShowTimes,
-  isFilterLoading,
-  hasData,
-  skeletonOpacity,
-  onMoviePress,
-  paddingBottom,
-}: ShowTimeResultsListProps) => {
-  const scrollRef = useRef<ScrollView>(null);
+const ShowTimeResultsList = memo(
+  ({
+    groupedShowTimes,
+    isFilterLoading,
+    hasData,
+    skeletonOpacity,
+    onMoviePress,
+    onCinemaPress,
+    initialDate,
+    paddingBottom,
+  }: ShowTimeResultsListProps) => {
+    const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    if (isFilterLoading) {
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }
-  }, [isFilterLoading]);
+    useEffect(() => {
+      if (isFilterLoading) {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      }
+    }, [isFilterLoading]);
 
-  return (
-  <ScrollView
-    ref={scrollRef}
-    showsVerticalScrollIndicator={false}
-    contentContainerStyle={[styles.showTimeListContent, { paddingBottom }]}
-  >
-    {isFilterLoading ? (
-      <>
-        {Array.from({ length: 4 }).map((_, blockIdx) => (
-          <View key={blockIdx} style={styles.showTimeCinemaBlock}>
-            <Animated.View style={[styles.skeletonLine, { width: '68%', height: 20, opacity: skeletonOpacity }]} />
-            <Animated.View style={[styles.skeletonLine, { width: '42%', height: 13, marginTop: 6, marginBottom: 10, opacity: skeletonOpacity }]} />
-            {Array.from({ length: blockIdx % 2 === 0 ? 1 : 2 }).map((_, rowIdx) => (
-              <View key={rowIdx} style={styles.showTimeFormatRow}>
-                <View style={styles.showTimeCinemaFormatBlock}>
-                  <Animated.View style={[styles.skeletonLine, { width: 110, height: 16, opacity: skeletonOpacity }]} />
-                  <Animated.View style={[styles.skeletonLine, { width: 52, height: 22, borderRadius: 4, opacity: skeletonOpacity }]} />
-                </View>
-                <View style={styles.showTimeSlotWrap}>
-                  {Array.from({ length: rowIdx === 0 ? 1 : 3 }).map((_, i) => (
-                    <Animated.View key={i} style={[styles.skeletonLine, { width: 54, height: 30, opacity: skeletonOpacity }]} />
-                  ))}
-                </View>
+    return (
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.showTimeListContent, { paddingBottom }]}
+      >
+        {isFilterLoading ? (
+          <>
+            {Array.from({ length: 4 }).map((_, blockIdx) => (
+              <View key={blockIdx} style={styles.showTimeCinemaBlock}>
+                <Animated.View
+                  style={[
+                    styles.skeletonLine,
+                    { width: '68%', height: 20, opacity: skeletonOpacity },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.skeletonLine,
+                    {
+                      width: '42%',
+                      height: 13,
+                      marginTop: 6,
+                      marginBottom: 10,
+                      opacity: skeletonOpacity,
+                    },
+                  ]}
+                />
+                {Array.from({ length: blockIdx % 2 === 0 ? 1 : 2 }).map(
+                  (_, rowIdx) => (
+                    <View key={rowIdx} style={styles.showTimeFormatRow}>
+                      <View style={styles.showTimeCinemaFormatBlock}>
+                        <Animated.View
+                          style={[
+                            styles.skeletonLine,
+                            {
+                              width: 110,
+                              height: 16,
+                              opacity: skeletonOpacity,
+                            },
+                          ]}
+                        />
+                        <Animated.View
+                          style={[
+                            styles.skeletonLine,
+                            {
+                              width: 52,
+                              height: 22,
+                              borderRadius: 4,
+                              opacity: skeletonOpacity,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.showTimeSlotWrap}>
+                        {Array.from({ length: rowIdx === 0 ? 1 : 3 }).map(
+                          (_, i) => (
+                            <Animated.View
+                              key={i}
+                              style={[
+                                styles.skeletonLine,
+                                {
+                                  width: 54,
+                                  height: 30,
+                                  opacity: skeletonOpacity,
+                                },
+                              ]}
+                            />
+                          ),
+                        )}
+                      </View>
+                    </View>
+                  ),
+                )}
               </View>
             ))}
+          </>
+        ) : groupedShowTimes.length === 0 ? (
+          <View style={styles.showTimeEmptyState}>
+            <Text style={styles.showTimeEmptyText}>
+              {hasData ? '沒有符合的場次' : '選擇條件後點擊搜尋'}
+            </Text>
           </View>
-        ))}
-      </>
-    ) : groupedShowTimes.length === 0 ? (
-      <View style={styles.showTimeEmptyState}>
-        <Text style={styles.showTimeEmptyText}>
-          {hasData ? '沒有符合的場次' : '選擇條件後點擊搜尋'}
-        </Text>
-      </View>
-    ) : (
-      groupedShowTimes.map(({ title, title_en, movie_id, youtube_thumbnail, items }) => (
-        <View key={title} style={styles.showTimeCinemaBlock}>
-          <Pressable
-            onPress={() => onMoviePress(movie_id, title, title_en, youtube_thumbnail)}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.showTimeTitlePressable,
-              pressed && styles.showTimeTitlePressableActive,
-            ]}
-          >
-            <Text numberOfLines={1} style={styles.showTimeCinemaName}>{title}</Text>
-            {title_en ? (
-              <Text numberOfLines={1} style={styles.showTimeMovieTitleEn}>{title_en}</Text>
-            ) : null}
-          </Pressable>
-          {items.map((item, idx) => (
-            <View key={idx} style={styles.showTimeFormatRow}>
-              <View style={styles.showTimeCinemaFormatBlock}>
-                <Text numberOfLines={1} style={styles.showTimeCinemaLabel}>{item.cinema}</Text>
-                {item.format ? (
-                  <View style={styles.showTimeFormatChip}>
-                    <Text numberOfLines={1} style={styles.showTimeFormatText}>{item.format}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.showTimeSlotWrap}>
-                {item.start_time.map(time => (
-                  <View key={time} style={styles.showTimeSlot}>
-                    <Text style={styles.showTimeSlotText}>{time}</Text>
-                  </View>
+        ) : (
+          groupedShowTimes.map(
+            ({ title, title_en, movie_id, youtube_thumbnail, items }) => (
+              <View key={title} style={styles.showTimeCinemaBlock}>
+                <Pressable
+                  onPress={() =>
+                    onMoviePress(movie_id, title, title_en, youtube_thumbnail)
+                  }
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.showTimeTitlePressable,
+                    pressed && styles.showTimeTitlePressableActive,
+                  ]}
+                >
+                  <Text numberOfLines={1} style={styles.showTimeCinemaName}>
+                    {title}
+                  </Text>
+                  {title_en ? (
+                    <Text numberOfLines={1} style={styles.showTimeMovieTitleEn}>
+                      {title_en}
+                    </Text>
+                  ) : null}
+                </Pressable>
+                {items.map((item, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() =>
+                      item.cinema_id != null
+                        ? onCinemaPress(
+                            item.cinema_id,
+                            item.cinema,
+                            movie_id,
+                            title,
+                            title_en,
+                            initialDate,
+                          )
+                        : undefined
+                    }
+                  >
+                    {({ pressed }) => (
+                      <View
+                        style={[
+                          styles.showTimeFormatRow,
+                          pressed && styles.showTimeFormatRowActive,
+                        ]}
+                      >
+                        <View style={styles.showTimeCinemaFormatBlock}>
+                          <Text
+                            numberOfLines={1}
+                            style={styles.showTimeCinemaLabel}
+                          >
+                            {item.cinema}
+                          </Text>
+                          {item.format ? (
+                            <View style={styles.showTimeFormatChip}>
+                              <Text
+                                numberOfLines={1}
+                                style={styles.showTimeFormatText}
+                              >
+                                {item.format}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <View style={styles.showTimeSlotWrap}>
+                          {item.start_time.map(time => (
+                            <View key={time} style={styles.showTimeSlot}>
+                              <Text style={styles.showTimeSlotText}>
+                                {time}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </Pressable>
                 ))}
               </View>
-            </View>
-          ))}
-        </View>
-      ))
-    )}
-  </ScrollView>
-  );
-});
+            ),
+          )
+        )}
+      </ScrollView>
+    );
+  },
+);
 
 const FilterScreen = () => {
   const [
@@ -286,7 +396,13 @@ const FilterScreen = () => {
   const [isFloatingActionExpanded, setIsFloatingActionExpanded] =
     useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
-  const [movieModalTarget, setMovieModalTarget] = useState<{ id?: string | number; movie_id?: string | number; title: string; title_en?: string; youtube_thumbnail?: string } | null>(null);
+  const [movieModalTarget, setMovieModalTarget] = useState<{
+    id?: string | number;
+    movie_id?: string | number;
+    title: string;
+    title_en?: string;
+    youtube_thumbnail?: string;
+  } | null>(null);
   const dateRevealAnimation = useRef(new Animated.Value(1)).current;
   const cityRevealAnimation = useRef(new Animated.Value(1)).current;
   const floatingActionProgress = useRef(new Animated.Value(0)).current;
@@ -351,11 +467,24 @@ const FilterScreen = () => {
   }, [movieGenresList]);
   const isAllGenreSelected = selectedGenreTitles.includes(ALL_GENRE_TITLE);
   const groupedShowTimes = useMemo<
-    Array<{ title: string; title_en?: string; movie_id?: string | number; youtube_thumbnail?: string; items: FilterShowTime[] }>
+    Array<{
+      title: string;
+      title_en?: string;
+      movie_id?: string | number;
+      youtube_thumbnail?: string;
+      items: FilterShowTime[];
+    }>
   >(() => {
     if (!filterShowTimesData?.length) return [];
     const map = new Map<string, FilterShowTime[]>();
-    const meta = new Map<string, { title_en?: string; movie_id?: string | number; youtube_thumbnail?: string }>();
+    const meta = new Map<
+      string,
+      {
+        title_en?: string;
+        movie_id?: string | number;
+        youtube_thumbnail?: string;
+      }
+    >();
     filterShowTimesData.forEach(item => {
       const list = map.get(item.title) ?? [];
       list.push(item);
@@ -606,8 +735,19 @@ const FilterScreen = () => {
   }, []);
 
   const handleOpenMovieModal = useCallback(
-    (movie_id: string | number | undefined, title: string, title_en?: string, youtube_thumbnail?: string) => {
-      setMovieModalTarget({ id: movie_id, movie_id, title, title_en, youtube_thumbnail });
+    (
+      movie_id: string | number | undefined,
+      title: string,
+      title_en?: string,
+      youtube_thumbnail?: string,
+    ) => {
+      setMovieModalTarget({
+        id: movie_id,
+        movie_id,
+        title,
+        title_en,
+        youtube_thumbnail,
+      });
     },
     [],
   );
@@ -619,6 +759,27 @@ const FilterScreen = () => {
   const handleAfterCloseMovieModal = useCallback(() => {
     setMovieModalTarget(null);
   }, []);
+
+  const handleCinemaPress = useCallback(
+    (
+      cinemaId: string | number,
+      cinemaName: string,
+      movieId: string | number | undefined,
+      movieTitle: string,
+      movieTitleEn: string | undefined,
+      initialDate: string,
+    ) => {
+      navigation.navigate('ShowTimeScreen', {
+        cinemaId: Number(cinemaId),
+        cinemaName,
+        movieId,
+        movieTitle,
+        movieTitleEn,
+        initialDate,
+      });
+    },
+    [navigation],
+  );
 
   const handleSearchPress = useCallback(() => {
     searchIconFlipAnimation.setValue(0);
@@ -769,7 +930,6 @@ const FilterScreen = () => {
     return () => loop.stop();
   }, [isFilterLoading, skeletonAnimation]);
 
-
   return (
     <GradientView style={styles.container}>
       <Animated.View
@@ -787,361 +947,370 @@ const FilterScreen = () => {
         />
       </Animated.View>
       <Animated.View style={{ paddingTop: ticketSafeAreaPadding }}>
-      <Animated.View
-        style={[styles.filmTicketContainer, { opacity: ticketUnrollAnimation }]}
-      >
         <Animated.View
-          pointerEvents="none"
           style={[
-            styles.filmShimmer,
-            { transform: [{ translateX: shimmerTranslateX }] },
+            styles.filmTicketContainer,
+            { opacity: ticketUnrollAnimation },
           ]}
-        />
-        <View style={styles.filmStripRow}>
-          {Array.from({ length: 22 }).map((_, i) => (
-            <View key={i} style={styles.filmHole} />
-          ))}
-        </View>
-        <View style={styles.ticketContentRow}>
-          <View style={styles.ticketField}>
-            <Text numberOfLines={1} style={styles.ticketLabel}>
-              DATE
-            </Text>
-            <Animated.View
-              style={{
-                transform: [
-                  { perspective: 800 },
-                  { rotateY: ticketDateRotateY },
-                ],
-              }}
-            >
-              <Text numberOfLines={1} style={styles.ticketValue}>
-                {selectedDate?.label ?? '日期'}
-              </Text>
-            </Animated.View>
-            <Text numberOfLines={1} style={styles.ticketSubValue}>
-              {selectedDate?.weekday ?? ''}
-            </Text>
+        >
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.filmShimmer,
+              { transform: [{ translateX: shimmerTranslateX }] },
+            ]}
+          />
+          <View style={styles.filmStripRow}>
+            {Array.from({ length: 22 }).map((_, i) => (
+              <View key={i} style={styles.filmHole} />
+            ))}
           </View>
-          <View style={styles.ticketField}>
-            <Text numberOfLines={1} style={styles.ticketLabel}>
-              TIME
-            </Text>
-            <Animated.View
-              style={{
-                transform: [
-                  { perspective: 800 },
-                  { rotateY: ticketPeriodRotateY },
-                ],
-              }}
-            >
-              <Text numberOfLines={1} style={styles.ticketValue}>
-                {selectedPeriod?.label ?? '時段'}
+          <View style={styles.ticketContentRow}>
+            <View style={styles.ticketField}>
+              <Text numberOfLines={1} style={styles.ticketLabel}>
+                DATE
               </Text>
-            </Animated.View>
-            <Text numberOfLines={1} style={styles.ticketSubValue}>
-              {selectedPeriod?.english ?? ''}
-            </Text>
-          </View>
-          <View style={styles.ticketField}>
-            <Text numberOfLines={1} style={styles.ticketLabel}>
-              CITY
-            </Text>
-            <Animated.View
-              style={{
-                transform: [
-                  { perspective: 800 },
-                  { rotateY: ticketCityRotateY },
-                ],
-              }}
-            >
-              <Text numberOfLines={1} style={styles.ticketValue}>
-                {selectedCityTitle}
+              <Animated.View
+                style={{
+                  transform: [
+                    { perspective: 800 },
+                    { rotateY: ticketDateRotateY },
+                  ],
+                }}
+              >
+                <Text numberOfLines={1} style={styles.ticketValue}>
+                  {selectedDate?.label ?? '日期'}
+                </Text>
+              </Animated.View>
+              <Text numberOfLines={1} style={styles.ticketSubValue}>
+                {selectedDate?.weekday ?? ''}
               </Text>
-            </Animated.View>
-            <Text numberOfLines={1} style={styles.ticketSubValue}>
-              {selectedCityEnglishTitle}
-            </Text>
-          </View>
-          <View style={styles.ticketField}>
-            <Text numberOfLines={1} style={styles.ticketLabel}>
-              GENRE
-            </Text>
-            <Animated.View
-              style={{
-                transform: [
-                  { perspective: 800 },
-                  { rotateY: ticketGenreRotateY },
-                ],
-              }}
-            >
-              <Text numberOfLines={1} style={styles.ticketValue}>
-                {ticketGenreValue}
+            </View>
+            <View style={styles.ticketField}>
+              <Text numberOfLines={1} style={styles.ticketLabel}>
+                TIME
               </Text>
-            </Animated.View>
-            <Text numberOfLines={1} style={styles.ticketSubValue}>
-              {ticketGenreSubValue}
-            </Text>
+              <Animated.View
+                style={{
+                  transform: [
+                    { perspective: 800 },
+                    { rotateY: ticketPeriodRotateY },
+                  ],
+                }}
+              >
+                <Text numberOfLines={1} style={styles.ticketValue}>
+                  {selectedPeriod?.label ?? '時段'}
+                </Text>
+              </Animated.View>
+              <Text numberOfLines={1} style={styles.ticketSubValue}>
+                {selectedPeriod?.english ?? ''}
+              </Text>
+            </View>
+            <View style={styles.ticketField}>
+              <Text numberOfLines={1} style={styles.ticketLabel}>
+                CITY
+              </Text>
+              <Animated.View
+                style={{
+                  transform: [
+                    { perspective: 800 },
+                    { rotateY: ticketCityRotateY },
+                  ],
+                }}
+              >
+                <Text numberOfLines={1} style={styles.ticketValue}>
+                  {selectedCityTitle}
+                </Text>
+              </Animated.View>
+              <Text numberOfLines={1} style={styles.ticketSubValue}>
+                {selectedCityEnglishTitle}
+              </Text>
+            </View>
+            <View style={styles.ticketField}>
+              <Text numberOfLines={1} style={styles.ticketLabel}>
+                GENRE
+              </Text>
+              <Animated.View
+                style={{
+                  transform: [
+                    { perspective: 800 },
+                    { rotateY: ticketGenreRotateY },
+                  ],
+                }}
+              >
+                <Text numberOfLines={1} style={styles.ticketValue}>
+                  {ticketGenreValue}
+                </Text>
+              </Animated.View>
+              <Text numberOfLines={1} style={styles.ticketSubValue}>
+                {ticketGenreSubValue}
+              </Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.filmStripRow}>
-          {Array.from({ length: 22 }).map((_, i) => (
-            <View key={i} style={styles.filmHole} />
-          ))}
-        </View>
-      </Animated.View>
+          <View style={styles.filmStripRow}>
+            {Array.from({ length: 22 }).map((_, i) => (
+              <View key={i} style={styles.filmHole} />
+            ))}
+          </View>
+        </Animated.View>
       </Animated.View>
       <View style={{ flex: 1 }}>
-      <Animated.View
-        pointerEvents={isSearchMode ? 'none' : 'box-none'}
-        style={{ flex: 1, opacity: mainContentOpacity }}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 116 }}
+        <Animated.View
+          pointerEvents={isSearchMode ? 'none' : 'box-none'}
+          style={{ flex: 1, opacity: mainContentOpacity }}
         >
-          <View>
-            <View style={styles.sectionTitleRow}>
-              <View style={styles.sectionRule} />
-              <Text style={styles.sectionTitle}>日期</Text>
-              <View style={styles.sectionRule} />
-            </View>
-            <ScrollView
-              ref={dateListRef}
-              horizontal
-              onLayout={event => {
-                dateListWidthRef.current = event.nativeEvent.layout.width;
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 116 }}
+          >
+            <View>
+              <View style={styles.sectionTitleRow}>
+                <View style={styles.sectionRule} />
+                <Text style={styles.sectionTitle}>日期</Text>
+                <View style={styles.sectionRule} />
+              </View>
+              <ScrollView
+                ref={dateListRef}
+                horizontal
+                onLayout={event => {
+                  dateListWidthRef.current = event.nativeEvent.layout.width;
 
-                if (shouldCenterDateRef.current) {
-                  requestAnimationFrame(() =>
-                    centerSelectedDate(selectedDateIndex),
-                  );
-                }
-              }}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dateListContent}
-            >
-              {dateItems.map((date, index) => {
-                const isSelected = selectedDateIndex === index;
+                  if (shouldCenterDateRef.current) {
+                    requestAnimationFrame(() =>
+                      centerSelectedDate(selectedDateIndex),
+                    );
+                  }
+                }}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dateListContent}
+              >
+                {dateItems.map((date, index) => {
+                  const isSelected = selectedDateIndex === index;
 
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    key={date.id}
-                    onLayout={event => {
-                      dateItemLayoutsRef.current[index] =
-                        event.nativeEvent.layout;
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      key={date.id}
+                      onLayout={event => {
+                        dateItemLayoutsRef.current[index] =
+                          event.nativeEvent.layout;
 
-                      if (
-                        index === selectedDateIndex &&
-                        shouldCenterDateRef.current
-                      ) {
-                        requestAnimationFrame(() => centerSelectedDate(index));
-                      }
-                    }}
-                    onPress={() => handleSelectDate(index)}
-                    style={[
-                      styles.dateItem,
-                      isSelected && styles.dateItemActive,
-                    ]}
-                  >
-                    {isSelected && (
-                      <Animated.View
-                        pointerEvents="none"
-                        style={[
-                          styles.dateItemReveal,
-                          { transform: [{ scale: dateRevealScale }] },
-                        ]}
-                      />
-                    )}
-                    <Text
-                      numberOfLines={1}
+                        if (
+                          index === selectedDateIndex &&
+                          shouldCenterDateRef.current
+                        ) {
+                          requestAnimationFrame(() =>
+                            centerSelectedDate(index),
+                          );
+                        }
+                      }}
+                      onPress={() => handleSelectDate(index)}
                       style={[
-                        styles.weekdayText,
-                        isSelected && styles.selectedOptionText,
+                        styles.dateItem,
+                        isSelected && styles.dateItemActive,
                       ]}
                     >
-                      {date.weekday}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.dayText,
-                        isSelected && styles.selectedOptionText,
-                      ]}
-                    >
-                      {date.day}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.monthText,
-                        isSelected && styles.selectedOptionText,
-                      ]}
-                    >
-                      {date.month}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          <View>
-            <View style={styles.sectionTitleRow}>
-              <View style={styles.sectionRule} />
-              <Text style={styles.sectionTitle}>時段</Text>
-              <View style={styles.sectionRule} />
-            </View>
-            <View style={styles.periodPanel}>
-              {PERIOD_OPTIONS.map((period, index) => {
-                const isSelected = selectedPeriodIndex === index;
-                const PeriodIcon = period.Icon;
-                const itemMainColor = isSelected ? '#F4D28E' : '#DDD4C5';
-                const itemSubColor = isSelected ? '#F4D28E' : '#8A8175';
-                const iconColor = isSelected
-                  ? period.iconSelectedColor
-                  : '#8A8175';
-
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    key={period.label}
-                    onPress={() => handleSelectPeriod(index)}
-                    style={[
-                      styles.periodOption,
-                      isSelected && styles.periodOptionSelected,
-                    ]}
-                  >
-                    <PeriodIcon
-                      color={iconColor}
-                      fill={isSelected ? iconColor : 'none'}
-                      size={24}
-                      strokeWidth={isSelected ? 1.4 : 2.2}
-                    />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.periodTime, { color: itemSubColor }]}
-                    >
-                      {period.time}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.periodLabel, { color: itemMainColor }]}
-                    >
-                      {period.label}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.periodEnglish, { color: itemSubColor }]}
-                    >
-                      {period.english}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <View>
-            <View style={styles.sectionTitleRow}>
-              <View style={styles.sectionRule} />
-              <Text style={styles.sectionTitle}>城市</Text>
-              <View style={styles.sectionRule} />
-            </View>
-            <ScrollView
-              ref={cityListRef}
-              horizontal
-              onLayout={event => {
-                cityListWidthRef.current = event.nativeEvent.layout.width;
-
-                if (shouldCenterCityRef.current) {
-                  requestAnimationFrame(() =>
-                    centerSelectedCity(selectedCityIndex),
-                  );
-                }
-              }}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cityListContent}
-            >
-              {cityTitles.map((cityTitle, index) => {
-                const isSelected = selectedCityIndex === index;
-                const cityEnglishTitle = getCityEnglishTitle(cityTitle);
-
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    key={`${cityTitle}-${index}`}
-                    onLayout={event => {
-                      cityItemLayoutsRef.current[index] =
-                        event.nativeEvent.layout;
-
-                      if (
-                        index === selectedCityIndex &&
-                        shouldCenterCityRef.current
-                      ) {
-                        requestAnimationFrame(() => centerSelectedCity(index));
-                      }
-                    }}
-                    onPress={() => handleSelectCity(index)}
-                    style={[
-                      styles.cityItem,
-                      isSelected && styles.cityItemActive,
-                    ]}
-                  >
-                    {isSelected && (
-                      <Animated.View
-                        pointerEvents="none"
-                        style={[
-                          styles.cityItemReveal,
-                          { transform: [{ scale: cityRevealScale }] },
-                        ]}
-                      />
-                    )}
-                    <View style={styles.verticalCityTitle}>
-                      {Array.from(cityTitle).map((char, charIndex) => (
-                        <Text
-                          key={`${cityTitle}-${char}-${charIndex}`}
+                      {isSelected && (
+                        <Animated.View
+                          pointerEvents="none"
                           style={[
-                            styles.cityTitle,
-                            isSelected && styles.selectedOptionText,
+                            styles.dateItemReveal,
+                            { transform: [{ scale: dateRevealScale }] },
                           ]}
-                        >
-                          {char}
-                        </Text>
-                      ))}
-                    </View>
-                    <Text
-                      numberOfLines={1}
+                        />
+                      )}
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.weekdayText,
+                          isSelected && styles.selectedOptionText,
+                        ]}
+                      >
+                        {date.weekday}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.dayText,
+                          isSelected && styles.selectedOptionText,
+                        ]}
+                      >
+                        {date.day}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.monthText,
+                          isSelected && styles.selectedOptionText,
+                        ]}
+                      >
+                        {date.month}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View>
+              <View style={styles.sectionTitleRow}>
+                <View style={styles.sectionRule} />
+                <Text style={styles.sectionTitle}>時段</Text>
+                <View style={styles.sectionRule} />
+              </View>
+              <View style={styles.periodPanel}>
+                {PERIOD_OPTIONS.map((period, index) => {
+                  const isSelected = selectedPeriodIndex === index;
+                  const PeriodIcon = period.Icon;
+                  const itemMainColor = isSelected ? '#F4D28E' : '#DDD4C5';
+                  const itemSubColor = isSelected ? '#F4D28E' : '#8A8175';
+                  const iconColor = isSelected
+                    ? period.iconSelectedColor
+                    : '#8A8175';
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      key={period.label}
+                      onPress={() => handleSelectPeriod(index)}
                       style={[
-                        styles.cityEnglishTitle,
-                        isSelected && styles.cityEnglishTitleActive,
+                        styles.periodOption,
+                        isSelected && styles.periodOptionSelected,
                       ]}
                     >
-                      {cityEnglishTitle}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </ScrollView>
-      </Animated.View>
-      <Animated.View
-        pointerEvents={isSearchMode ? 'auto' : 'none'}
-        style={[StyleSheet.absoluteFill, { opacity: searchContentOpacity }]}
-      >
-        <ShowTimeResultsList
-          groupedShowTimes={groupedShowTimes}
-          isFilterLoading={isFilterLoading}
-          hasData={Boolean(filterShowTimesData)}
-          skeletonOpacity={skeletonOpacity}
-          onMoviePress={handleOpenMovieModal}
-          paddingBottom={insets.bottom + 116}
-        />
-      </Animated.View>
+                      <PeriodIcon
+                        color={iconColor}
+                        fill={isSelected ? iconColor : 'none'}
+                        size={24}
+                        strokeWidth={isSelected ? 1.4 : 2.2}
+                      />
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.periodTime, { color: itemSubColor }]}
+                      >
+                        {period.time}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.periodLabel, { color: itemMainColor }]}
+                      >
+                        {period.label}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.periodEnglish, { color: itemSubColor }]}
+                      >
+                        {period.english}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+            <View>
+              <View style={styles.sectionTitleRow}>
+                <View style={styles.sectionRule} />
+                <Text style={styles.sectionTitle}>城市</Text>
+                <View style={styles.sectionRule} />
+              </View>
+              <ScrollView
+                ref={cityListRef}
+                horizontal
+                onLayout={event => {
+                  cityListWidthRef.current = event.nativeEvent.layout.width;
+
+                  if (shouldCenterCityRef.current) {
+                    requestAnimationFrame(() =>
+                      centerSelectedCity(selectedCityIndex),
+                    );
+                  }
+                }}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.cityListContent}
+              >
+                {cityTitles.map((cityTitle, index) => {
+                  const isSelected = selectedCityIndex === index;
+                  const cityEnglishTitle = getCityEnglishTitle(cityTitle);
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      key={`${cityTitle}-${index}`}
+                      onLayout={event => {
+                        cityItemLayoutsRef.current[index] =
+                          event.nativeEvent.layout;
+
+                        if (
+                          index === selectedCityIndex &&
+                          shouldCenterCityRef.current
+                        ) {
+                          requestAnimationFrame(() =>
+                            centerSelectedCity(index),
+                          );
+                        }
+                      }}
+                      onPress={() => handleSelectCity(index)}
+                      style={[
+                        styles.cityItem,
+                        isSelected && styles.cityItemActive,
+                      ]}
+                    >
+                      {isSelected && (
+                        <Animated.View
+                          pointerEvents="none"
+                          style={[
+                            styles.cityItemReveal,
+                            { transform: [{ scale: cityRevealScale }] },
+                          ]}
+                        />
+                      )}
+                      <View style={styles.verticalCityTitle}>
+                        {Array.from(cityTitle).map((char, charIndex) => (
+                          <Text
+                            key={`${cityTitle}-${char}-${charIndex}`}
+                            style={[
+                              styles.cityTitle,
+                              isSelected && styles.selectedOptionText,
+                            ]}
+                          >
+                            {char}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.cityEnglishTitle,
+                          isSelected && styles.cityEnglishTitleActive,
+                        ]}
+                      >
+                        {cityEnglishTitle}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </ScrollView>
+        </Animated.View>
+        <Animated.View
+          pointerEvents={isSearchMode ? 'auto' : 'none'}
+          style={[StyleSheet.absoluteFill, { opacity: searchContentOpacity }]}
+        >
+          <ShowTimeResultsList
+            groupedShowTimes={groupedShowTimes}
+            isFilterLoading={isFilterLoading}
+            hasData={Boolean(filterShowTimesData)}
+            skeletonOpacity={skeletonOpacity}
+            onMoviePress={handleOpenMovieModal}
+            onCinemaPress={handleCinemaPress}
+            initialDate={selectedDate?.id ?? ''}
+            paddingBottom={insets.bottom + 116}
+          />
+        </Animated.View>
       </View>
       <AnimatedPressable
         accessibilityRole="button"
@@ -1814,19 +1983,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  showTimeFormatRowActive: {
+    backgroundColor: 'rgba(198,160,94,0.22)',
+  },
   showTimeCinemaLabel: {
     color: '#F3F4F6',
+    flex: 1,
     fontSize: 13,
     lineHeight: 18,
     fontFamily: FONT_FAMILY.oswaldRegular,
   },
   showTimeFormatRow: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 6,
+    backgroundColor: 'rgba(198,160,94,0.08)',
+    borderColor: 'rgba(198,160,94,0.2)',
+    borderRadius: 8,
+    borderWidth: 0,
     flexDirection: 'column',
-    marginTop: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   showTimeFormatChip: {
     backgroundColor: 'rgba(198,160,94,0.15)',
@@ -1839,8 +2014,8 @@ const styles = StyleSheet.create({
   },
   showTimeFormatText: {
     color: '#C6A05E',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 9,
+    lineHeight: 13,
     textAlign: 'center',
     fontFamily: FONT_FAMILY.oswaldRegular,
   },

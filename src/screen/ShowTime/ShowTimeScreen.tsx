@@ -20,6 +20,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   useGetCinemaShowTimeDatesMutation,
+  useGetMovieCinemasMutation,
   useGetMovieShowTimesMutation,
 } from '@/api/moviesApi';
 import { ShowTimeHeader } from '@/components/CustomHeader';
@@ -461,6 +462,8 @@ const ShowTimeScreen = () => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [getCinemaShowTimeDates, { data: showTimeDatesData }] =
     useGetCinemaShowTimeDatesMutation();
+  const [getMovieCinemas, { data: movieCinemasData }] =
+    useGetMovieCinemasMutation();
   const [
     getMovieShowTimes,
     { isLoading: isShowTimesLoading, data: showTimesData },
@@ -481,6 +484,12 @@ const ShowTimeScreen = () => {
   useEffect(() => {
     getCinemaShowTimeDates(params.cinemaId);
   }, [getCinemaShowTimeDates, params.cinemaId]);
+
+  useEffect(() => {
+    if (params.movieId && !params.movieShowDates) {
+      getMovieCinemas(params.movieId);
+    }
+  }, [getMovieCinemas, params.movieId, params.movieShowDates]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -528,10 +537,20 @@ const ShowTimeScreen = () => {
       return listItems;
     });
   }, [adInsertAfterIndexes, showTimes]);
-  const movieShowDateSet = useMemo(
-    () => new Set(params.movieShowDates ?? []),
-    [params.movieShowDates],
-  );
+  const movieShowDateSet = useMemo(() => {
+    if (params.movieShowDates) {
+      return new Set(params.movieShowDates);
+    }
+    if (movieCinemasData && params.cinemaId) {
+      for (const city of movieCinemasData) {
+        const match = city.cinemas.find(c => c.id === params.cinemaId);
+        if (match?.show_dates) {
+          return new Set(match.show_dates);
+        }
+      }
+    }
+    return new Set<string>();
+  }, [movieCinemasData, params.cinemaId, params.movieShowDates]);
   const dateItems = useMemo(
     () =>
       showTimeDates.map(dateValue => ({
@@ -680,8 +699,13 @@ const ShowTimeScreen = () => {
 
     const isNewDateList =
       previousDateSelectionKeyRef.current !== dateSelectionKey;
+    const initialDateIndex = params.initialDate
+      ? showTimeDates.indexOf(params.initialDate)
+      : -1;
     const todayDateIndex = showTimeDates.indexOf(todayDateKey);
-    const defaultDateIndex = todayDateIndex >= 0 ? todayDateIndex : 0;
+    const defaultDateIndex =
+      initialDateIndex >= 0 ? initialDateIndex :
+      todayDateIndex >= 0 ? todayDateIndex : 0;
     const nextSelectedDateIndex = isNewDateList
       ? defaultDateIndex
       : selectedDateIndex >= dateItems.length
