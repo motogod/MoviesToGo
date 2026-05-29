@@ -3,16 +3,23 @@ import { useDispatch } from 'react-redux';
 import {
   useGetMoviesListMutation,
   useGetCityAndCinemasMutation,
+  useGetMovieGenresMutation,
   useGetPopularMoviesMutation,
   useGetUpcomingMoviesMutation,
 } from '@/api/moviesApi';
-import type { Movie, CityAndCinemas, PopularMovie } from '@/api/types/movies';
+import type {
+  Movie,
+  CityAndCinemas,
+  MovieGenresResponse,
+  PopularMovie,
+} from '@/api/types/movies';
 import type { AppDispatch } from '@/store';
 import {
   setMoviesList,
   setUpcomingMoviesList,
   setPopularMoviesList,
   setCitiesAndCinemasList,
+  setMovieGenresList,
 } from '@/store';
 
 const getMoviesListSeed = () => {
@@ -220,7 +227,7 @@ const useCityAndCinemasBootstrap = () => {
           setIsInitialLoading(true);
         }
 
-        const res = await getCityAndCinemas({}).unwrap();
+        const res = await getCityAndCinemas().unwrap();
         const citiesAndCinemas: CityAndCinemas[] = Array.isArray(res)
           ? res
           : [res];
@@ -244,4 +251,44 @@ const useCityAndCinemasBootstrap = () => {
   return { isInitialLoading };
 };
 
-export { useMoviesBootstrap, useCityAndCinemasBootstrap };
+const useMovieGenresBootstrap = () => {
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
+  const [getMovieGenres] = useGetMovieGenresMutation();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        if (isMounted) {
+          setIsInitialLoading(true);
+        }
+
+        const movieGenres: MovieGenresResponse =
+          await getMovieGenres().unwrap();
+
+        if (isMounted) {
+          dispatch(setMovieGenresList(movieGenres));
+          setIsInitialLoading(false);
+        }
+      } catch {
+        if (isMounted) {
+          setIsInitialLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dispatch, getMovieGenres]);
+
+  return { isInitialLoading };
+};
+
+export {
+  useMoviesBootstrap,
+  useCityAndCinemasBootstrap,
+  useMovieGenresBootstrap,
+};

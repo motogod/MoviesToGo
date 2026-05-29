@@ -8,4 +8,5 @@ export type HomeStackParamsType = {
     movieTitleEn?: string;
     movieShowDates?: string[];
   };
+  FilterScreen: undefined;
 };

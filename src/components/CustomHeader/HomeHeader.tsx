@@ -8,7 +8,7 @@ import {
   View,
   type ImageSourcePropType,
 } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, SquareDashedText } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Popover from 'react-native-popover-view';
@@ -31,6 +31,7 @@ const HomeHeader = ({
   leftVariant = 'logo',
   onPress,
   backgroundColor = '#0B0B0F',
+  notificationOnPress,
 }: PropsType) => {
   const { top } = useSafeAreaInsets();
   const titleAnimation = useRef(
@@ -152,14 +153,16 @@ const HomeHeader = ({
         </Animated.Text>
       ) : null}
 
-      {/* <Pressable
-        accessibilityRole="button"
-        onPress={notificationOnPress}
-        hitSlop={10}
-        style={styles.iconButton}
-      >
-        <Bell size={24} color="#F3F4F6" strokeWidth={2.4} />
-      </Pressable> */}
+      {notificationOnPress ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={notificationOnPress}
+          hitSlop={10}
+          style={styles.iconButton}
+        >
+          <SquareDashedText size={24} color="#F3F4F6" strokeWidth={2.4} />
+        </Pressable>
+      ) : null}
     </View>
   );
 };

@@ -94,6 +94,26 @@ export type MovieShowTime = {
 
 export type MovieShowTimesResponse = MovieShowTime[];
 
+export type MovieGenresResponse = string[];
+
+export type FilterShowTimesParams = {
+  city: string;
+  date: string;
+  period: string;
+  genres?: string[];
+};
+
+export type FilterShowTime = {
+  title: string;
+  title_en?: string;
+  id?: string | number;
+  cinema: string;
+  start_time: string[];
+  format?: string;
+};
+
+export type FilterShowTimesResponse = FilterShowTime[];
+
 export type MoviesListParams = {
   offset: number;
   limit: number;

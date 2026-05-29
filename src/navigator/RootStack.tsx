@@ -1,10 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useSelector } from 'react-redux';
 // import type { RootState } from "@store/index";
 // import AuthStack from "./AuthStack";
 // import TabStack from "./TabStack";
 import HomeScreen from '@/screen/Home/HomeScreen';
+import FilterScreen from '@/screen/Filter/FilterScreen';
 import ShowTimeScreen from '@/screen/ShowTime/ShowTimeScreen';
 // import SecuritySettingsScreen from "src/screen/Me/SecuritySettingsScreen";
 // import { SplashView } from "src/screen/Login/SplashScreen";
@@ -21,6 +21,7 @@ const RootStack = () => {
     >
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="ShowTimeScreen" component={ShowTimeScreen} />
+      <Stack.Screen name="FilterScreen" component={FilterScreen} />
     </Stack.Navigator>
   );
 };

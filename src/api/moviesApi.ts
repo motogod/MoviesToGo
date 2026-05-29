@@ -1,7 +1,11 @@
 import { baseApi } from './index';
 import type {
   CinemaShowTimeDatesResponse,
+  CityAndCinemas,
+  FilterShowTimesParams,
+  FilterShowTimesResponse,
   MovieCinemasResponse,
+  MovieGenresResponse,
   MovieShowTimesParams,
   MovieShowTimesResponse,
   MoviesDetailResponse,
@@ -11,6 +15,22 @@ import type {
   UpcomingMoviesParams,
   UpcomingMoviesResponse,
 } from './types/movies';
+
+const getFilterShowTimesQueryString = ({
+  city,
+  date,
+  period,
+  genres,
+}: FilterShowTimesParams) => {
+  const searchParams = new URLSearchParams();
+
+  searchParams.append('city', city);
+  searchParams.append('date', date);
+  searchParams.append('period', period);
+  genres?.forEach(genre => searchParams.append('genres', genre));
+
+  return searchParams.toString();
+};
 
 export const moviesApi = baseApi.injectEndpoints({
   endpoints: build => ({
@@ -52,9 +72,24 @@ export const moviesApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
-    getCityAndCinemas: build.mutation<MoviesDetailResponse, string | number>({
-      query: _id => ({
+    getCityAndCinemas: build.mutation<CityAndCinemas[], void>({
+      query: () => ({
         url: `cinemas/sections`,
+        method: 'GET',
+      }),
+    }),
+    getMovieGenres: build.mutation<MovieGenresResponse, void>({
+      query: () => ({
+        url: 'movies/genres',
+        method: 'GET',
+      }),
+    }),
+    getFilterShowTimes: build.mutation<
+      FilterShowTimesResponse,
+      FilterShowTimesParams
+    >({
+      query: params => ({
+        url: `movies/filter-showtimes?${getFilterShowTimesQueryString(params)}`,
         method: 'GET',
       }),
     }),
@@ -95,6 +130,8 @@ export const {
   useGetMoviesDetailMutation,
   useGetUpcomingMovieDetailMutation,
   useGetCityAndCinemasMutation,
+  useGetMovieGenresMutation,
+  useGetFilterShowTimesMutation,
   useGetCinemaShowTimeDatesMutation,
   useGetMovieShowTimesMutation,
   useGetMovieCinemasMutation,

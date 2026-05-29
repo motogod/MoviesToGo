@@ -14,10 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FONT_FAMILY } from '@/utility/fonts';
 
 type PropsType = {
-  title: string;
+  title?: string;
   subtitle?: string;
   onBack: () => void;
   backgroundColor?: string;
+  showTitle?: boolean;
+  showRightIcon?: boolean;
+  variant?: 'default' | 'filter';
 };
 
 const HEADER_HORIZONTAL_PADDING = 16;
@@ -30,6 +33,9 @@ const ShowTimeHeader = ({
   subtitle,
   onBack,
   backgroundColor = '#0B0B0F',
+  showTitle = true,
+  showRightIcon = true,
+  variant = 'default',
 }: PropsType) => {
   const { top } = useSafeAreaInsets();
   const iconRotateAnimation = useRef(new Animated.Value(0)).current;
@@ -87,7 +93,11 @@ const ShowTimeHeader = ({
         pointerEvents="none"
         start={{ x: 0, y: -0.9 }}
         end={{ x: 0, y: 1 }}
-        colors={['#FFF', '#0B0B0F']}
+        colors={
+          variant === 'filter'
+            ? ['#151514', '#07080B']
+            : ['#FFF', '#0B0B0F']
+        }
         style={styles.gradient}
       />
       <Pressable
@@ -95,40 +105,59 @@ const ShowTimeHeader = ({
         android_ripple={{ color: 'transparent', borderless: false }}
         onPress={handleBack}
         hitSlop={10}
-        style={styles.backIconButton}
-      >
-        <ArrowLeft size={27} color="#F3F4F6" strokeWidth={2.8} />
-      </Pressable>
-
-      <View style={[styles.titleBlock, subtitle && { bottom: 2 }]}>
-        <Text numberOfLines={1} style={styles.title}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Animated.Text
-            numberOfLines={1}
-            style={[styles.subtitle, subtitleAnimatedStyle]}
-          >
-            {subtitle}
-          </Animated.Text>
-        ) : null}
-      </View>
-
-      <Animated.View
-        pointerEvents="none"
         style={[
-          styles.animatedIconSlot,
-          {
-            top: top - 4,
-          },
+          styles.backIconButton,
+          variant === 'filter' && styles.filterBackIconButton,
         ]}
       >
-        <Animated.Image
-          source={require('@/assets/image/headerIcon.png')}
-          resizeMode="contain"
-          style={[styles.headerIcon, { transform: [{ rotateY: iconRotate }] }]}
+        <ArrowLeft
+          size={27}
+          color={variant === 'filter' ? '#F4E1B4' : '#F3F4F6'}
+          strokeWidth={2.8}
         />
-      </Animated.View>
+      </Pressable>
+
+      {showTitle ? (
+        <View
+          style={[
+            styles.titleBlock,
+            subtitle ? styles.titleBlockWithSubtitle : null,
+          ]}
+        >
+          <Text numberOfLines={1} style={styles.title}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Animated.Text
+              numberOfLines={1}
+              style={[styles.subtitle, subtitleAnimatedStyle]}
+            >
+              {subtitle}
+            </Animated.Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {showRightIcon ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.animatedIconSlot,
+            {
+              top: top - 4,
+            },
+          ]}
+        >
+          <Animated.Image
+            source={require('@/assets/image/headerIcon.png')}
+            resizeMode="contain"
+            style={[
+              styles.headerIcon,
+              { transform: [{ rotateY: iconRotate }] },
+            ]}
+          />
+        </Animated.View>
+      ) : null}
     </View>
   );
 };
@@ -174,6 +203,21 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  filterBackIconButton: {
+    backgroundColor: 'rgba(18,18,18,0.62)',
+    borderColor: 'rgba(230,196,141,0.36)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#D8A94F',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.14,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 0,
+      },
+    }),
+  },
   title: {
     color: '#F3F4F6',
     fontSize: 17,
@@ -188,6 +232,9 @@ const styles = StyleSheet.create({
     bottom: 12,
     alignItems: 'center',
     zIndex: 3,
+  },
+  titleBlockWithSubtitle: {
+    bottom: 2,
   },
   subtitle: {
     color: '#CBD5E1',

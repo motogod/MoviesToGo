@@ -56,7 +56,12 @@ import {
   UpcomingMovieSkeleton,
 } from './components';
 import { TheaterScreen } from '@/screen/Theater';
-import { useMoviesBootstrap, useCityAndCinemasBootstrap } from '@/hooks';
+import {
+  useMoviesBootstrap,
+  useCityAndCinemasBootstrap,
+  useMovieGenresBootstrap,
+  useHomeNavigation,
+} from '@/hooks';
 import { useGetMovieCinemasMutation } from '@/api/moviesApi';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -307,10 +312,12 @@ const MovieListBackgroundLayer = () => (
 // reactnativereusables
 const HomeScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { navigation } = useHomeNavigation();
   const { isInitialLoading, isPopularMoviesLoading, isUpcomingMoviesLoading } =
     useMoviesBootstrap();
   const { isInitialLoading: isTheaterInitialLoading } =
     useCityAndCinemasBootstrap();
+  useMovieGenresBootstrap();
   const { width: screenWidth } = useWindowDimensions();
 
   const [activeTab, setActiveTab] = useState<HomeTab>('home');
@@ -993,6 +1000,10 @@ const HomeScreen = () => {
     searchInputRef.current?.blur();
   }, [navigatePage, theaterPageActive]);
 
+  const openFilterScreen = useCallback(() => {
+    navigation.navigate('FilterScreen');
+  }, [navigation]);
+
   const getMovieKey = useCallback(
     (item: Movie, index?: number) =>
       String(item.id ?? item.movie_id ?? `${item.title}-${index ?? 'movie'}`),
@@ -1151,7 +1162,10 @@ const HomeScreen = () => {
 
   return (
     <GradientView style={styles.container}>
-      <HomeHeader centerTitle={movieCinemaHeaderTitle ?? undefined} />
+      <HomeHeader
+        centerTitle={movieCinemaHeaderTitle ?? undefined}
+        notificationOnPress={theaterPageActive ? openFilterScreen : undefined}
+      />
       <View style={styles.pageViewport}>
         <RNAnimated.View
           style={[
@@ -1549,6 +1563,14 @@ const styles = StyleSheet.create({
     // #4EC9E0
     // #F3F4F6
     // #FF4D4F
+    // #8B5CF6
+    // #A855F7
+    // #C084FC
+    // #FF7A00
+
+    // #FF8C42
+
+    // #FF6B35
   },
   pageViewport: {
     flex: 1,

@@ -4,6 +4,7 @@ import type {
   CinemasData,
   CityAndCinemas,
   Movie,
+  MovieGenresResponse,
   MovieShowTimesResponse,
   MoviesDetailResponse,
   PopularMovie,
@@ -24,6 +25,7 @@ type MoviesSliceType = {
   moviesList: Movie[];
   upcomingMoviesList: Movie[];
   popularMoviesList: PopularMovie[];
+  movieGenresList: MovieGenresResponse;
   userSelectedMovieDetail?: MoviesDetailResponse[];
   userSelectedUpcomingMovieDetail?: MoviesDetailResponse[];
   userSelectedCinemaShowTimes?: UserSelectedCinemaShowTimes[];
@@ -37,6 +39,7 @@ const initialState: MoviesSliceType = {
   moviesList: [], // 首頁呈現的電影清單
   upcomingMoviesList: [], // 即將上映的電影清單
   popularMoviesList: [], // 熱門電影排行榜清單
+  movieGenresList: [], // 電影類型清單
   userSelectedMovieDetail: [], // 使用者點擊過的電影詳細資料清單
   userSelectedUpcomingMovieDetail: [], // 使用者點擊過的即將上映電影詳細資料清單
   userSelectedCinemaShowTimes: [], // 使用者看過的戲院日期場次清單
@@ -64,6 +67,9 @@ const moviesSlice = createSlice({
     },
     setPopularMoviesList(state, action: PayloadAction<PopularMovie[]>) {
       state.popularMoviesList = action.payload;
+    },
+    setMovieGenresList(state, action: PayloadAction<MovieGenresResponse>) {
+      state.movieGenresList = action.payload;
     },
     addUserSelectedMovieDetail(
       state,
@@ -187,6 +193,7 @@ export const {
   setMoviesList,
   setUpcomingMoviesList,
   setPopularMoviesList,
+  setMovieGenresList,
   addUserSelectedMovieDetail,
   addUserSelectedUpcomingMovieDetail,
   addUserSelectedCinemaShowTimes,
