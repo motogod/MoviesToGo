@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  memo,
   useMemo,
   useRef,
   useState,
@@ -27,12 +28,15 @@ import {
   X,
 } from 'lucide-react-native';
 import { ShowTimeHeader } from '@/components/CustomHeader';
+import { MovieModal } from '@/components/CustomModal';
 import GradientView from '@/components/CustomView/GradientView';
 import { useHomeNavigation } from '@/hooks';
 import { Text } from '@/components/ui/text';
 import type { AppDispatch, RootState } from '@/store';
 import { setSelectedTheaterCityTitle } from '@/store';
 import { FONT_FAMILY } from '@/utility/fonts';
+import { useGetFilterShowTimesMutation } from '@/api/moviesApi';
+import type { FilterShowTime } from '@/api/types/movies';
 
 type FilterDateItem = {
   id: string;
@@ -42,7 +46,6 @@ type FilterDateItem = {
   weekday: string;
 };
 
-const AnimatedText = Animated.createAnimatedComponent(Text);
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const CITY_REVEAL_SIZE = 128;
 const DATE_REVEAL_SIZE = 128;
@@ -54,24 +57,28 @@ const PERIOD_OPTIONS = [
     time: '06:00-12:00',
     english: 'MORNING',
     Icon: Sunrise,
+    iconSelectedColor: '#F4A85E',
   },
   {
     label: '下午',
     time: '12:00-18:00',
     english: 'AFTERNOON',
     Icon: Sun,
+    iconSelectedColor: '#F47A5C',
   },
   {
     label: '晚上',
     time: '18:00-24:00',
     english: 'NIGHT',
     Icon: Moon,
+    iconSelectedColor: '#F4D28E',
   },
   {
     label: '深夜',
     time: '00:00-06:00',
     english: 'MIDNIGHT',
     Icon: MoonStar,
+    iconSelectedColor: '#A0B4D8',
   },
 ];
 const WEEKDAY_TITLES = ['日', '一', '二', '三', '四', '五', '六'];
@@ -144,7 +151,120 @@ const getNextSevenDates = () =>
 const getCityEnglishTitle = (cityTitle?: string) =>
   cityTitle ? CITY_EN_TITLES[cityTitle] ?? cityTitle.toUpperCase() : '';
 
+type GroupedShowTime = {
+  title: string;
+  title_en?: string;
+  movie_id?: string | number;
+  youtube_thumbnail?: string;
+  items: FilterShowTime[];
+};
+
+type ShowTimeResultsListProps = {
+  groupedShowTimes: GroupedShowTime[];
+  isFilterLoading: boolean;
+  hasData: boolean;
+  skeletonOpacity: Animated.AnimatedInterpolation<string | number>;
+  onMoviePress: (id: string | number | undefined, title: string, title_en?: string, thumb?: string) => void;
+  paddingBottom: number;
+};
+
+const ShowTimeResultsList = memo(({
+  groupedShowTimes,
+  isFilterLoading,
+  hasData,
+  skeletonOpacity,
+  onMoviePress,
+  paddingBottom,
+}: ShowTimeResultsListProps) => {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (isFilterLoading) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [isFilterLoading]);
+
+  return (
+  <ScrollView
+    ref={scrollRef}
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={[styles.showTimeListContent, { paddingBottom }]}
+  >
+    {isFilterLoading ? (
+      <>
+        {Array.from({ length: 4 }).map((_, blockIdx) => (
+          <View key={blockIdx} style={styles.showTimeCinemaBlock}>
+            <Animated.View style={[styles.skeletonLine, { width: '68%', height: 20, opacity: skeletonOpacity }]} />
+            <Animated.View style={[styles.skeletonLine, { width: '42%', height: 13, marginTop: 6, marginBottom: 10, opacity: skeletonOpacity }]} />
+            {Array.from({ length: blockIdx % 2 === 0 ? 1 : 2 }).map((_, rowIdx) => (
+              <View key={rowIdx} style={styles.showTimeFormatRow}>
+                <View style={styles.showTimeCinemaFormatBlock}>
+                  <Animated.View style={[styles.skeletonLine, { width: 110, height: 16, opacity: skeletonOpacity }]} />
+                  <Animated.View style={[styles.skeletonLine, { width: 52, height: 22, borderRadius: 4, opacity: skeletonOpacity }]} />
+                </View>
+                <View style={styles.showTimeSlotWrap}>
+                  {Array.from({ length: rowIdx === 0 ? 1 : 3 }).map((_, i) => (
+                    <Animated.View key={i} style={[styles.skeletonLine, { width: 54, height: 30, opacity: skeletonOpacity }]} />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+      </>
+    ) : groupedShowTimes.length === 0 ? (
+      <View style={styles.showTimeEmptyState}>
+        <Text style={styles.showTimeEmptyText}>
+          {hasData ? '沒有符合的場次' : '選擇條件後點擊搜尋'}
+        </Text>
+      </View>
+    ) : (
+      groupedShowTimes.map(({ title, title_en, movie_id, youtube_thumbnail, items }) => (
+        <View key={title} style={styles.showTimeCinemaBlock}>
+          <Pressable
+            onPress={() => onMoviePress(movie_id, title, title_en, youtube_thumbnail)}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.showTimeTitlePressable,
+              pressed && styles.showTimeTitlePressableActive,
+            ]}
+          >
+            <Text numberOfLines={1} style={styles.showTimeCinemaName}>{title}</Text>
+            {title_en ? (
+              <Text numberOfLines={1} style={styles.showTimeMovieTitleEn}>{title_en}</Text>
+            ) : null}
+          </Pressable>
+          {items.map((item, idx) => (
+            <View key={idx} style={styles.showTimeFormatRow}>
+              <View style={styles.showTimeCinemaFormatBlock}>
+                <Text numberOfLines={1} style={styles.showTimeCinemaLabel}>{item.cinema}</Text>
+                {item.format ? (
+                  <View style={styles.showTimeFormatChip}>
+                    <Text numberOfLines={1} style={styles.showTimeFormatText}>{item.format}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.showTimeSlotWrap}>
+                {item.start_time.map(time => (
+                  <View key={time} style={styles.showTimeSlot}>
+                    <Text style={styles.showTimeSlotText}>{time}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      ))
+    )}
+  </ScrollView>
+  );
+});
+
 const FilterScreen = () => {
+  const [
+    getFilterShowTimes,
+    { data: filterShowTimesData, isLoading: isFilterLoading },
+  ] = useGetFilterShowTimesMutation();
   const dispatch = useDispatch<AppDispatch>();
   const { navigation } = useHomeNavigation();
   const { width: screenWidth } = useWindowDimensions();
@@ -165,16 +285,21 @@ const FilterScreen = () => {
   ]);
   const [isFloatingActionExpanded, setIsFloatingActionExpanded] =
     useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [movieModalTarget, setMovieModalTarget] = useState<{ id?: string | number; movie_id?: string | number; title: string; title_en?: string; youtube_thumbnail?: string } | null>(null);
   const dateRevealAnimation = useRef(new Animated.Value(1)).current;
   const cityRevealAnimation = useRef(new Animated.Value(1)).current;
   const floatingActionProgress = useRef(new Animated.Value(0)).current;
   const floatingActionIconFlipAnimation = useRef(new Animated.Value(0)).current;
   const searchIconFlipAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
-  const ticketDateValueAnimation = useRef(new Animated.Value(1)).current;
-  const ticketPeriodValueAnimation = useRef(new Animated.Value(1)).current;
-  const ticketCityValueAnimation = useRef(new Animated.Value(1)).current;
-  const ticketGenreValueAnimation = useRef(new Animated.Value(1)).current;
+  const searchModeAnimation = useRef(new Animated.Value(0)).current;
+  const headerCollapseProgress = useRef(new Animated.Value(0)).current;
+  const skeletonAnimation = useRef(new Animated.Value(0)).current;
+  const ticketDateValueAnimation = useRef(new Animated.Value(0)).current;
+  const ticketPeriodValueAnimation = useRef(new Animated.Value(0)).current;
+  const ticketCityValueAnimation = useRef(new Animated.Value(0)).current;
+  const ticketGenreValueAnimation = useRef(new Animated.Value(0)).current;
   const ticketUnrollAnimation = useRef(new Animated.Value(0)).current;
   const dateListRef = useRef<ScrollView>(null);
   const cityListRef = useRef<ScrollView>(null);
@@ -225,6 +350,30 @@ const FilterScreen = () => {
       }));
   }, [movieGenresList]);
   const isAllGenreSelected = selectedGenreTitles.includes(ALL_GENRE_TITLE);
+  const groupedShowTimes = useMemo<
+    Array<{ title: string; title_en?: string; movie_id?: string | number; youtube_thumbnail?: string; items: FilterShowTime[] }>
+  >(() => {
+    if (!filterShowTimesData?.length) return [];
+    const map = new Map<string, FilterShowTime[]>();
+    const meta = new Map<string, { title_en?: string; movie_id?: string | number; youtube_thumbnail?: string }>();
+    filterShowTimesData.forEach(item => {
+      const list = map.get(item.title) ?? [];
+      list.push(item);
+      map.set(item.title, list);
+      if (!meta.has(item.title)) {
+        meta.set(item.title, {
+          title_en: item.title_en,
+          movie_id: item.movie_id,
+          youtube_thumbnail: item.youtube_thumbnail,
+        });
+      }
+    });
+    return Array.from(map.entries()).map(([title, items]) => ({
+      title,
+      ...meta.get(title),
+      items,
+    }));
+  }, [filterShowTimesData]);
   const ticketGenreValue = isAllGenreSelected
     ? ALL_GENRE_TITLE
     : selectedGenreTitles[0] ?? ALL_GENRE_TITLE;
@@ -279,11 +428,52 @@ const FilterScreen = () => {
     inputRange: [0, 1],
     outputRange: [70, 0],
   });
+  const headerNaturalHeight = insets.top + 56;
+  const headerAnimatedMaxHeight = headerCollapseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [headerNaturalHeight, 0],
+  });
+  const headerAnimatedOpacity = headerCollapseProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0, 0],
+  });
+  const ticketSafeAreaPadding = headerCollapseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, insets.top],
+  });
+  const skeletonOpacity = skeletonAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.65],
+  });
   const floatingGenreMenuWidth = Math.min(screenWidth - 48, 360);
   const floatingGenreMenuRight = 97 - floatingGenreMenuWidth / 2;
   const searchIconRotateY = searchIconFlipAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+  });
+  const ticketDateRotateY = ticketDateValueAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const ticketPeriodRotateY = ticketPeriodValueAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const ticketCityRotateY = ticketCityValueAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const ticketGenreRotateY = ticketGenreValueAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  const mainContentOpacity = searchModeAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+  const searchContentOpacity = searchModeAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
   });
   const shimmerTranslateX = shimmerAnimation.interpolate({
     inputRange: [0, 1],
@@ -346,21 +536,13 @@ const FilterScreen = () => {
 
   const runTicketValueTransition = useCallback((animation: Animated.Value) => {
     animation.stopAnimation();
-    animation.setValue(1);
-    Animated.sequence([
-      Animated.timing(animation, {
-        duration: 420,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1.92,
-        useNativeDriver: true,
-      }),
-      Animated.timing(animation, {
-        duration: 680,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    animation.setValue(0);
+    Animated.timing(animation, {
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const handleSelectDate = useCallback(
@@ -423,24 +605,60 @@ const FilterScreen = () => {
     setIsFloatingActionExpanded(isExpanded => !isExpanded);
   }, []);
 
+  const handleOpenMovieModal = useCallback(
+    (movie_id: string | number | undefined, title: string, title_en?: string, youtube_thumbnail?: string) => {
+      setMovieModalTarget({ id: movie_id, movie_id, title, title_en, youtube_thumbnail });
+    },
+    [],
+  );
+
+  const handleCloseMovieModal = useCallback(() => {
+    setMovieModalTarget(null);
+  }, []);
+
+  const handleAfterCloseMovieModal = useCallback(() => {
+    setMovieModalTarget(null);
+  }, []);
+
   const handleSearchPress = useCallback(() => {
     searchIconFlipAnimation.setValue(0);
-    shimmerAnimation.setValue(0);
-    Animated.parallel([
-      Animated.timing(searchIconFlipAnimation, {
-        duration: 420,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
+    Animated.timing(searchIconFlipAnimation, {
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+
+    const enteringSearch = !isSearchMode;
+    setIsSearchMode(enteringSearch);
+
+    if (enteringSearch) {
+      setIsFloatingActionExpanded(false);
+      shimmerAnimation.setValue(0);
       Animated.timing(shimmerAnimation, {
         duration: 1400,
         easing: Easing.inOut(Easing.quad),
         toValue: 1,
         useNativeDriver: true,
-      }),
-    ]).start();
-  }, [searchIconFlipAnimation, shimmerAnimation]);
+      }).start();
+      getFilterShowTimes({
+        city: selectedCityTitle,
+        date: selectedDate?.id ?? '',
+        period: selectedPeriod?.time ?? '',
+        genres: isAllGenreSelected ? undefined : selectedGenreTitles,
+      });
+    }
+  }, [
+    getFilterShowTimes,
+    isAllGenreSelected,
+    isSearchMode,
+    searchIconFlipAnimation,
+    selectedCityTitle,
+    selectedDate,
+    selectedGenreTitles,
+    selectedPeriod,
+    shimmerAnimation,
+  ]);
 
   const handleFloatingGenrePress = useCallback(
     (genreTitle: string) => {
@@ -507,14 +725,68 @@ const FilterScreen = () => {
     }).start();
   }, [floatingActionIconFlipAnimation, isFloatingActionExpanded]);
 
+  useEffect(() => {
+    Animated.timing(searchModeAnimation, {
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      toValue: isSearchMode ? 1 : 0,
+      useNativeDriver: true,
+    }).start();
+  }, [isSearchMode, searchModeAnimation]);
+
+  useEffect(() => {
+    Animated.timing(headerCollapseProgress, {
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      toValue: isSearchMode ? 1 : 0,
+      useNativeDriver: false,
+    }).start();
+  }, [isSearchMode, headerCollapseProgress]);
+
+  useEffect(() => {
+    if (!isFilterLoading) {
+      skeletonAnimation.stopAnimation();
+      skeletonAnimation.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(skeletonAnimation, {
+          toValue: 1,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(skeletonAnimation, {
+          toValue: 0,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isFilterLoading, skeletonAnimation]);
+
+
   return (
     <GradientView style={styles.container}>
-      <ShowTimeHeader
-        onBack={navigation.goBack}
-        showTitle={false}
-        showRightIcon={false}
-        variant="filter"
-      />
+      <Animated.View
+        style={{
+          maxHeight: headerAnimatedMaxHeight,
+          opacity: headerAnimatedOpacity,
+          overflow: 'hidden',
+        }}
+      >
+        <ShowTimeHeader
+          onBack={navigation.goBack}
+          showTitle={false}
+          showRightIcon={false}
+          variant="filter"
+        />
+      </Animated.View>
+      <Animated.View style={{ paddingTop: ticketSafeAreaPadding }}>
       <Animated.View
         style={[styles.filmTicketContainer, { opacity: ticketUnrollAnimation }]}
       >
@@ -535,15 +807,18 @@ const FilterScreen = () => {
             <Text numberOfLines={1} style={styles.ticketLabel}>
               DATE
             </Text>
-            <AnimatedText
-              numberOfLines={1}
-              style={[
-                styles.ticketValue,
-                { transform: [{ scale: ticketDateValueAnimation }] },
-              ]}
+            <Animated.View
+              style={{
+                transform: [
+                  { perspective: 800 },
+                  { rotateY: ticketDateRotateY },
+                ],
+              }}
             >
-              {selectedDate?.label ?? '日期'}
-            </AnimatedText>
+              <Text numberOfLines={1} style={styles.ticketValue}>
+                {selectedDate?.label ?? '日期'}
+              </Text>
+            </Animated.View>
             <Text numberOfLines={1} style={styles.ticketSubValue}>
               {selectedDate?.weekday ?? ''}
             </Text>
@@ -552,15 +827,18 @@ const FilterScreen = () => {
             <Text numberOfLines={1} style={styles.ticketLabel}>
               TIME
             </Text>
-            <AnimatedText
-              numberOfLines={1}
-              style={[
-                styles.ticketValue,
-                { transform: [{ scale: ticketPeriodValueAnimation }] },
-              ]}
+            <Animated.View
+              style={{
+                transform: [
+                  { perspective: 800 },
+                  { rotateY: ticketPeriodRotateY },
+                ],
+              }}
             >
-              {selectedPeriod?.label ?? '時段'}
-            </AnimatedText>
+              <Text numberOfLines={1} style={styles.ticketValue}>
+                {selectedPeriod?.label ?? '時段'}
+              </Text>
+            </Animated.View>
             <Text numberOfLines={1} style={styles.ticketSubValue}>
               {selectedPeriod?.english ?? ''}
             </Text>
@@ -569,15 +847,18 @@ const FilterScreen = () => {
             <Text numberOfLines={1} style={styles.ticketLabel}>
               CITY
             </Text>
-            <AnimatedText
-              numberOfLines={1}
-              style={[
-                styles.ticketValue,
-                { transform: [{ scale: ticketCityValueAnimation }] },
-              ]}
+            <Animated.View
+              style={{
+                transform: [
+                  { perspective: 800 },
+                  { rotateY: ticketCityRotateY },
+                ],
+              }}
             >
-              {selectedCityTitle}
-            </AnimatedText>
+              <Text numberOfLines={1} style={styles.ticketValue}>
+                {selectedCityTitle}
+              </Text>
+            </Animated.View>
             <Text numberOfLines={1} style={styles.ticketSubValue}>
               {selectedCityEnglishTitle}
             </Text>
@@ -586,15 +867,18 @@ const FilterScreen = () => {
             <Text numberOfLines={1} style={styles.ticketLabel}>
               GENRE
             </Text>
-            <AnimatedText
-              numberOfLines={1}
-              style={[
-                styles.ticketValue,
-                { transform: [{ scale: ticketGenreValueAnimation }] },
-              ]}
+            <Animated.View
+              style={{
+                transform: [
+                  { perspective: 800 },
+                  { rotateY: ticketGenreRotateY },
+                ],
+              }}
             >
-              {ticketGenreValue}
-            </AnimatedText>
+              <Text numberOfLines={1} style={styles.ticketValue}>
+                {ticketGenreValue}
+              </Text>
+            </Animated.View>
             <Text numberOfLines={1} style={styles.ticketSubValue}>
               {ticketGenreSubValue}
             </Text>
@@ -606,228 +890,259 @@ const FilterScreen = () => {
           ))}
         </View>
       </Animated.View>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 116 }}
+      </Animated.View>
+      <View style={{ flex: 1 }}>
+      <Animated.View
+        pointerEvents={isSearchMode ? 'none' : 'box-none'}
+        style={{ flex: 1, opacity: mainContentOpacity }}
       >
-        <View>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionRule} />
-            <Text style={styles.sectionTitle}>日期</Text>
-            <View style={styles.sectionRule} />
-          </View>
-          <ScrollView
-            ref={dateListRef}
-            horizontal
-            onLayout={event => {
-              dateListWidthRef.current = event.nativeEvent.layout.width;
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 116 }}
+        >
+          <View>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionRule} />
+              <Text style={styles.sectionTitle}>日期</Text>
+              <View style={styles.sectionRule} />
+            </View>
+            <ScrollView
+              ref={dateListRef}
+              horizontal
+              onLayout={event => {
+                dateListWidthRef.current = event.nativeEvent.layout.width;
 
-              if (shouldCenterDateRef.current) {
-                requestAnimationFrame(() =>
-                  centerSelectedDate(selectedDateIndex),
-                );
-              }
-            }}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dateListContent}
-          >
-            {dateItems.map((date, index) => {
-              const isSelected = selectedDateIndex === index;
+                if (shouldCenterDateRef.current) {
+                  requestAnimationFrame(() =>
+                    centerSelectedDate(selectedDateIndex),
+                  );
+                }
+              }}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dateListContent}
+            >
+              {dateItems.map((date, index) => {
+                const isSelected = selectedDateIndex === index;
 
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  key={date.id}
-                  onLayout={event => {
-                    dateItemLayoutsRef.current[index] =
-                      event.nativeEvent.layout;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={date.id}
+                    onLayout={event => {
+                      dateItemLayoutsRef.current[index] =
+                        event.nativeEvent.layout;
 
-                    if (
-                      index === selectedDateIndex &&
-                      shouldCenterDateRef.current
-                    ) {
-                      requestAnimationFrame(() => centerSelectedDate(index));
-                    }
-                  }}
-                  onPress={() => handleSelectDate(index)}
-                  style={[styles.dateItem, isSelected && styles.dateItemActive]}
-                >
-                  {isSelected && (
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.dateItemReveal,
-                        { transform: [{ scale: dateRevealScale }] },
-                      ]}
-                    />
-                  )}
-                  <Text
-                    numberOfLines={1}
+                      if (
+                        index === selectedDateIndex &&
+                        shouldCenterDateRef.current
+                      ) {
+                        requestAnimationFrame(() => centerSelectedDate(index));
+                      }
+                    }}
+                    onPress={() => handleSelectDate(index)}
                     style={[
-                      styles.weekdayText,
-                      isSelected && styles.selectedOptionText,
+                      styles.dateItem,
+                      isSelected && styles.dateItemActive,
                     ]}
                   >
-                    {date.weekday}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.dayText,
-                      isSelected && styles.selectedOptionText,
-                    ]}
-                  >
-                    {date.day}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.monthText,
-                      isSelected && styles.selectedOptionText,
-                    ]}
-                  >
-                    {date.month}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <View>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionRule} />
-            <Text style={styles.sectionTitle}>時段</Text>
-            <View style={styles.sectionRule} />
-          </View>
-          <View style={styles.periodPanel}>
-            {PERIOD_OPTIONS.map((period, index) => {
-              const isSelected = selectedPeriodIndex === index;
-              const PeriodIcon = period.Icon;
-              const itemMainColor = isSelected ? '#F4D28E' : '#DDD4C5';
-              const itemSubColor = isSelected ? '#F4D28E' : '#8A8175';
-
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  key={period.label}
-                  onPress={() => handleSelectPeriod(index)}
-                  style={[
-                    styles.periodOption,
-                    isSelected && styles.periodOptionSelected,
-                  ]}
-                >
-                  <PeriodIcon
-                    color={itemSubColor}
-                    size={24}
-                    strokeWidth={2.2}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.periodTime, { color: itemSubColor }]}
-                  >
-                    {period.time}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.periodLabel, { color: itemMainColor }]}
-                  >
-                    {period.label}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.periodEnglish, { color: itemSubColor }]}
-                  >
-                    {period.english}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-        <View>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionRule} />
-            <Text style={styles.sectionTitle}>城市</Text>
-            <View style={styles.sectionRule} />
-          </View>
-          <ScrollView
-            ref={cityListRef}
-            horizontal
-            onLayout={event => {
-              cityListWidthRef.current = event.nativeEvent.layout.width;
-
-              if (shouldCenterCityRef.current) {
-                requestAnimationFrame(() =>
-                  centerSelectedCity(selectedCityIndex),
-                );
-              }
-            }}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.cityListContent}
-          >
-            {cityTitles.map((cityTitle, index) => {
-              const isSelected = selectedCityIndex === index;
-              const cityEnglishTitle = getCityEnglishTitle(cityTitle);
-
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  key={`${cityTitle}-${index}`}
-                  onLayout={event => {
-                    cityItemLayoutsRef.current[index] =
-                      event.nativeEvent.layout;
-
-                    if (
-                      index === selectedCityIndex &&
-                      shouldCenterCityRef.current
-                    ) {
-                      requestAnimationFrame(() => centerSelectedCity(index));
-                    }
-                  }}
-                  onPress={() => handleSelectCity(index)}
-                  style={[styles.cityItem, isSelected && styles.cityItemActive]}
-                >
-                  {isSelected && (
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.cityItemReveal,
-                        { transform: [{ scale: cityRevealScale }] },
-                      ]}
-                    />
-                  )}
-                  <View style={styles.verticalCityTitle}>
-                    {Array.from(cityTitle).map((char, charIndex) => (
-                      <Text
-                        key={`${cityTitle}-${char}-${charIndex}`}
+                    {isSelected && (
+                      <Animated.View
+                        pointerEvents="none"
                         style={[
-                          styles.cityTitle,
-                          isSelected && styles.selectedOptionText,
+                          styles.dateItemReveal,
+                          { transform: [{ scale: dateRevealScale }] },
                         ]}
-                      >
-                        {char}
-                      </Text>
-                    ))}
-                  </View>
-                  <Text
-                    numberOfLines={1}
+                      />
+                    )}
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.weekdayText,
+                        isSelected && styles.selectedOptionText,
+                      ]}
+                    >
+                      {date.weekday}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.dayText,
+                        isSelected && styles.selectedOptionText,
+                      ]}
+                    >
+                      {date.day}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.monthText,
+                        isSelected && styles.selectedOptionText,
+                      ]}
+                    >
+                      {date.month}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionRule} />
+              <Text style={styles.sectionTitle}>時段</Text>
+              <View style={styles.sectionRule} />
+            </View>
+            <View style={styles.periodPanel}>
+              {PERIOD_OPTIONS.map((period, index) => {
+                const isSelected = selectedPeriodIndex === index;
+                const PeriodIcon = period.Icon;
+                const itemMainColor = isSelected ? '#F4D28E' : '#DDD4C5';
+                const itemSubColor = isSelected ? '#F4D28E' : '#8A8175';
+                const iconColor = isSelected
+                  ? period.iconSelectedColor
+                  : '#8A8175';
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={period.label}
+                    onPress={() => handleSelectPeriod(index)}
                     style={[
-                      styles.cityEnglishTitle,
-                      isSelected && styles.cityEnglishTitleActive,
+                      styles.periodOption,
+                      isSelected && styles.periodOptionSelected,
                     ]}
                   >
-                    {cityEnglishTitle}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </ScrollView>
+                    <PeriodIcon
+                      color={iconColor}
+                      fill={isSelected ? iconColor : 'none'}
+                      size={24}
+                      strokeWidth={isSelected ? 1.4 : 2.2}
+                    />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.periodTime, { color: itemSubColor }]}
+                    >
+                      {period.time}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.periodLabel, { color: itemMainColor }]}
+                    >
+                      {period.label}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.periodEnglish, { color: itemSubColor }]}
+                    >
+                      {period.english}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          <View>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionRule} />
+              <Text style={styles.sectionTitle}>城市</Text>
+              <View style={styles.sectionRule} />
+            </View>
+            <ScrollView
+              ref={cityListRef}
+              horizontal
+              onLayout={event => {
+                cityListWidthRef.current = event.nativeEvent.layout.width;
+
+                if (shouldCenterCityRef.current) {
+                  requestAnimationFrame(() =>
+                    centerSelectedCity(selectedCityIndex),
+                  );
+                }
+              }}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.cityListContent}
+            >
+              {cityTitles.map((cityTitle, index) => {
+                const isSelected = selectedCityIndex === index;
+                const cityEnglishTitle = getCityEnglishTitle(cityTitle);
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={`${cityTitle}-${index}`}
+                    onLayout={event => {
+                      cityItemLayoutsRef.current[index] =
+                        event.nativeEvent.layout;
+
+                      if (
+                        index === selectedCityIndex &&
+                        shouldCenterCityRef.current
+                      ) {
+                        requestAnimationFrame(() => centerSelectedCity(index));
+                      }
+                    }}
+                    onPress={() => handleSelectCity(index)}
+                    style={[
+                      styles.cityItem,
+                      isSelected && styles.cityItemActive,
+                    ]}
+                  >
+                    {isSelected && (
+                      <Animated.View
+                        pointerEvents="none"
+                        style={[
+                          styles.cityItemReveal,
+                          { transform: [{ scale: cityRevealScale }] },
+                        ]}
+                      />
+                    )}
+                    <View style={styles.verticalCityTitle}>
+                      {Array.from(cityTitle).map((char, charIndex) => (
+                        <Text
+                          key={`${cityTitle}-${char}-${charIndex}`}
+                          style={[
+                            styles.cityTitle,
+                            isSelected && styles.selectedOptionText,
+                          ]}
+                        >
+                          {char}
+                        </Text>
+                      ))}
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.cityEnglishTitle,
+                        isSelected && styles.cityEnglishTitleActive,
+                      ]}
+                    >
+                      {cityEnglishTitle}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </Animated.View>
+      <Animated.View
+        pointerEvents={isSearchMode ? 'auto' : 'none'}
+        style={[StyleSheet.absoluteFill, { opacity: searchContentOpacity }]}
+      >
+        <ShowTimeResultsList
+          groupedShowTimes={groupedShowTimes}
+          isFilterLoading={isFilterLoading}
+          hasData={Boolean(filterShowTimesData)}
+          skeletonOpacity={skeletonOpacity}
+          onMoviePress={handleOpenMovieModal}
+          paddingBottom={insets.bottom + 116}
+        />
+      </Animated.View>
+      </View>
       <AnimatedPressable
         accessibilityRole="button"
         onPress={() => setIsFloatingActionExpanded(false)}
@@ -856,96 +1171,110 @@ const FilterScreen = () => {
                 ],
               }}
             >
-              <Search color="#F4D28E" size={24} strokeWidth={2.7} />
+              {isSearchMode ? (
+                <X color="#F4D28E" size={24} strokeWidth={2.7} />
+              ) : (
+                <Search color="#F4D28E" size={24} strokeWidth={2.7} />
+              )}
             </Animated.View>
           </Pressable>
         </View>
 
-        <View
-          style={[
-            styles.floatingActionWrap,
-            { bottom: insets.bottom + 16, right: screenWidth / 2 - 97 },
-          ]}
-        >
-          <Animated.View
-            pointerEvents={isFloatingActionExpanded ? 'box-none' : 'none'}
+        {!isSearchMode && (
+          <View
             style={[
-              styles.floatingActionMenu,
-              {
-                opacity: floatingActionMenuOpacity,
-                transform: [
-                  { translateX: floatingGenreButtonTranslateX },
-                  { translateY: floatingGenreButtonTranslateY },
-                  { scale: floatingGenreButtonScale },
-                ],
-                right: floatingGenreMenuRight,
-                width: floatingGenreMenuWidth,
-              },
-            ]}
-          >
-            {floatingGenreButtons.length > 0 ? (
-              floatingGenreButtons.map(genre => {
-                const isSelected = selectedGenreTitles.includes(genre.title);
-
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    key={genre.key}
-                    onPress={() => handleFloatingGenrePress(genre.title)}
-                    style={[
-                      styles.floatingGenreButton,
-                      isSelected && styles.floatingGenreButtonSelected,
-                    ]}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.floatingGenreTitle,
-                        isSelected && styles.floatingGenreTitleSelected,
-                      ]}
-                    >
-                      {genre.title}
-                    </Text>
-                  </Pressable>
-                );
-              })
-            ) : (
-              <View style={styles.floatingGenreEmptyButton}>
-                <Text numberOfLines={1} style={styles.floatingGenreTitle}>
-                  暫無電影分類
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-          <AnimatedPressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: isFloatingActionExpanded }}
-            onPress={toggleFloatingAction}
-            hitSlop={12}
-            style={[
-              styles.floatingActionButton,
-              isFloatingActionExpanded && styles.floatingActionButtonExpanded,
-              { transform: [{ scale: floatingActionButtonScale }] },
+              styles.floatingActionWrap,
+              { bottom: insets.bottom + 16, right: screenWidth / 2 - 97 },
             ]}
           >
             <Animated.View
-              style={{
-                transform: [
-                  { perspective: 800 },
-                  { rotateY: floatingActionIconRotateY },
-                ],
-              }}
+              pointerEvents={isFloatingActionExpanded ? 'box-none' : 'none'}
+              style={[
+                styles.floatingActionMenu,
+                {
+                  opacity: floatingActionMenuOpacity,
+                  transform: [
+                    { translateX: floatingGenreButtonTranslateX },
+                    { translateY: floatingGenreButtonTranslateY },
+                    { scale: floatingGenreButtonScale },
+                  ],
+                  right: floatingGenreMenuRight,
+                  width: floatingGenreMenuWidth,
+                },
+              ]}
             >
-              {isFloatingActionExpanded ? (
-                <X size={14} color="#F9FAFB" strokeWidth={3} />
+              {floatingGenreButtons.length > 0 ? (
+                floatingGenreButtons.map(genre => {
+                  const isSelected = selectedGenreTitles.includes(genre.title);
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      key={genre.key}
+                      onPress={() => handleFloatingGenrePress(genre.title)}
+                      style={[
+                        styles.floatingGenreButton,
+                        isSelected && styles.floatingGenreButtonSelected,
+                      ]}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.floatingGenreTitle,
+                          isSelected && styles.floatingGenreTitleSelected,
+                        ]}
+                      >
+                        {genre.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })
               ) : (
-                <Clapperboard size={14} color="#D1D5DB" strokeWidth={3} />
+                <View style={styles.floatingGenreEmptyButton}>
+                  <Text numberOfLines={1} style={styles.floatingGenreTitle}>
+                    暫無電影分類
+                  </Text>
+                </View>
               )}
             </Animated.View>
-          </AnimatedPressable>
-        </View>
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isFloatingActionExpanded }}
+              onPress={toggleFloatingAction}
+              hitSlop={12}
+              style={[
+                styles.floatingActionButton,
+                isFloatingActionExpanded && styles.floatingActionButtonExpanded,
+                { transform: [{ scale: floatingActionButtonScale }] },
+              ]}
+            >
+              <Animated.View
+                style={{
+                  transform: [
+                    { perspective: 800 },
+                    { rotateY: floatingActionIconRotateY },
+                  ],
+                }}
+              >
+                {isFloatingActionExpanded ? (
+                  <X size={14} color="#F9FAFB" strokeWidth={3} />
+                ) : (
+                  <Clapperboard size={14} color="#D1D5DB" strokeWidth={3} />
+                )}
+              </Animated.View>
+            </AnimatedPressable>
+          </View>
+        )}
       </View>
+      <MovieModal
+        visible={movieModalTarget !== null}
+        movie={movieModalTarget}
+        posterLayout={null}
+        onClose={handleCloseMovieModal}
+        onAfterClose={handleAfterCloseMovieModal}
+        showCinemaButton={false}
+      />
     </GradientView>
   );
 };
@@ -1442,6 +1771,112 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginTop: 1,
     fontFamily: FONT_FAMILY.oswaldLight,
+  },
+  showTimeListContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  showTimeEmptyState: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingTop: 60,
+  },
+  showTimeEmptyText: {
+    color: '#8A8175',
+    fontSize: 14,
+    fontFamily: FONT_FAMILY.oswaldRegular,
+  },
+  showTimeCinemaBlock: {
+    borderBottomColor: 'rgba(198,160,94,0.28)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+    paddingBottom: 18,
+    paddingTop: 16,
+  },
+  showTimeCinemaName: {
+    color: '#F0E0C1',
+    fontSize: 16,
+    lineHeight: 22,
+    fontFamily: FONT_FAMILY.inter28Regular,
+  },
+  showTimeMovieTitleEn: {
+    color: '#6E6760',
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 10,
+    marginTop: 2,
+    fontFamily: FONT_FAMILY.oswaldRegular,
+  },
+  showTimeCinemaFormatBlock: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  showTimeCinemaLabel: {
+    color: '#F3F4F6',
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: FONT_FAMILY.oswaldRegular,
+  },
+  showTimeFormatRow: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 6,
+    flexDirection: 'column',
+    marginTop: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  showTimeFormatChip: {
+    backgroundColor: 'rgba(198,160,94,0.15)',
+    borderColor: 'rgba(198,160,94,0.4)',
+    borderRadius: 4,
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  showTimeFormatText: {
+    color: '#C6A05E',
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
+    fontFamily: FONT_FAMILY.oswaldRegular,
+  },
+  showTimeSlotWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  showTimeSlot: {
+    backgroundColor: 'rgba(198,160,94,0.10)',
+    borderColor: 'rgba(198,160,94,0.30)',
+    borderRadius: 5,
+    borderWidth: 1,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  showTimeSlotText: {
+    color: '#F4D28E',
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: FONT_FAMILY.oswaldRegular,
+  },
+  skeletonLine: {
+    backgroundColor: 'rgba(198,160,94,0.18)',
+    borderRadius: 4,
+  },
+  showTimeTitlePressable: {
+    borderRadius: 6,
+    marginBottom: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  showTimeTitlePressableActive: {
+    backgroundColor: 'rgba(198,160,94,0.32)',
+    opacity: 0.72,
   },
 });
 

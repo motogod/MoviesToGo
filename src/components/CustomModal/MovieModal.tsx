@@ -426,9 +426,9 @@ const MovieModal = ({
             <X size={20} color="#F3F4F6" strokeWidth={2.8} />
           </Pressable>
           <View style={styles.posterWrap}>
-            {movie?.poster_url ? (
+            {(movie?.youtube_thumbnail ?? movie?.poster_url) ? (
               <Image
-                source={{ uri: movie.youtube_thumbnail }}
+                source={{ uri: movie?.youtube_thumbnail ?? movie?.poster_url }}
                 resizeMode="cover"
                 style={styles.modalPoster}
               />
@@ -518,39 +518,14 @@ const MovieModal = ({
                       .split(/[,、]/)
                       .map(item => item.trim())
                       .filter(Boolean)
-                      .map((genre, index) => {
-                        const badgeStyles = [
-                          {
-                            container: styles.badgeYellow,
-                            text: styles.badgeTextYellow,
-                          },
-                          {
-                            container: styles.badgeCyan,
-                            text: styles.badgeTextCyan,
-                          },
-                          {
-                            container: styles.badgeWhite,
-                            text: styles.badgeTextWhite,
-                          },
-                          {
-                            container: styles.badgeRed,
-                            text: styles.badgeTextRed,
-                          },
-                        ];
-                        const currentStyle =
-                          badgeStyles[index % badgeStyles.length];
-
-                        return (
-                          <Badge
-                            key={`${genre}-${index}`}
-                            style={[styles.badge, currentStyle.container]}
-                          >
-                            <Text style={[styles.badgeText, currentStyle.text]}>
-                              {genre}
-                            </Text>
-                          </Badge>
-                        );
-                      })}
+                      .map((genre, index) => (
+                        <Badge
+                          key={`${genre}-${index}`}
+                          style={styles.badge}
+                        >
+                          <Text style={styles.badgeText}>{genre}</Text>
+                        </Badge>
+                      ))}
                   </View>
                   {getRatingIcon(movieDetail?.rating) ? (
                     <Image
@@ -1100,43 +1075,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(198,160,94,0.15)',
+    borderColor: 'rgba(198,160,94,0.4)',
+    borderRadius: 4,
     borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: '500',
-    fontFamily: FONT_FAMILY.inter18Light,
-  },
-  badgeYellow: {
-    borderColor: 'rgba(245, 234, 0, 0.4)',
-    backgroundColor: 'rgba(245, 234, 0, 0.15)',
-  },
-  badgeTextYellow: {
-    color: '#F5EA00',
-  },
-  badgeCyan: {
-    borderColor: 'rgba(54, 182, 213, 0.4)',
-    backgroundColor: 'rgba(54, 182, 213, 0.15)',
-  },
-  badgeTextCyan: {
-    color: '#4EC9E0',
-  },
-  badgeWhite: {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  badgeTextWhite: {
-    color: '#F3F4F6',
-  },
-  badgeRed: {
-    borderColor: 'rgba(255, 77, 79, 0.4)',
-    backgroundColor: 'rgba(255, 77, 79, 0.15)',
-  },
-  badgeTextRed: {
-    color: '#FF4D4F',
+    color: '#C6A05E',
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: FONT_FAMILY.oswaldRegular,
   },
 });
 

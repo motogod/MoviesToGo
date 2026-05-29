@@ -106,10 +106,12 @@ export type FilterShowTimesParams = {
 export type FilterShowTime = {
   title: string;
   title_en?: string;
-  id?: string | number;
+  movie_id?: string | number;
+  cinema_id?: string | number;
   cinema: string;
   start_time: string[];
   format?: string;
+  youtube_thumbnail?: string;
 };
 
 export type FilterShowTimesResponse = FilterShowTime[];
