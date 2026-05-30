@@ -8,7 +8,7 @@ import {
   View,
   type ImageSourcePropType,
 } from 'react-native';
-import { ArrowLeft, SquareDashedText } from 'lucide-react-native';
+import { ArrowLeft, ZoomIn } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Popover from 'react-native-popover-view';
@@ -140,7 +140,7 @@ const HomeHeader = ({
           from={renderLogoButton()}
           popoverStyle={styles.logoPopover}
         >
-          <Text style={styles.logoPopoverText}>版本 1.0.1</Text>
+          <Text style={styles.logoPopoverText}>版本 1.0.2</Text>
         </Popover>
       )}
 
@@ -160,7 +160,7 @@ const HomeHeader = ({
           hitSlop={10}
           style={styles.iconButton}
         >
-          <SquareDashedText size={24} color="#F3F4F6" strokeWidth={2.4} />
+          <ZoomIn size={22} color="#C6A05E" strokeWidth={2.6} />
         </Pressable>
       ) : null}
     </View>

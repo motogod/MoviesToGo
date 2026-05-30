@@ -13,6 +13,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -179,6 +180,7 @@ type ShowTimeResultsListProps = {
     initialDate: string,
   ) => void;
   initialDate: string;
+  isTyping: boolean;
   paddingBottom: number;
 };
 
@@ -191,6 +193,7 @@ const ShowTimeResultsList = memo(
     onMoviePress,
     onCinemaPress,
     initialDate,
+    isTyping,
     paddingBottom,
   }: ShowTimeResultsListProps) => {
     const scrollRef = useRef<ScrollView>(null);
@@ -207,7 +210,7 @@ const ShowTimeResultsList = memo(
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.showTimeListContent, { paddingBottom }]}
       >
-        {isFilterLoading ? (
+        {isFilterLoading || isTyping ? (
           <>
             {Array.from({ length: 4 }).map((_, blockIdx) => (
               <View key={blockIdx} style={styles.showTimeCinemaBlock}>
@@ -396,6 +399,8 @@ const FilterScreen = () => {
   const [isFloatingActionExpanded, setIsFloatingActionExpanded] =
     useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchFilterText, setSearchFilterText] = useState('');
+  const [hasSubmittedSearch, setHasSubmittedSearch] = useState(false);
   const [movieModalTarget, setMovieModalTarget] = useState<{
     id?: string | number;
     movie_id?: string | number;
@@ -417,6 +422,7 @@ const FilterScreen = () => {
   const ticketCityValueAnimation = useRef(new Animated.Value(0)).current;
   const ticketGenreValueAnimation = useRef(new Animated.Value(0)).current;
   const ticketUnrollAnimation = useRef(new Animated.Value(0)).current;
+  const searchInputRef = useRef<TextInput>(null);
   const dateListRef = useRef<ScrollView>(null);
   const cityListRef = useRef<ScrollView>(null);
   const dateListWidthRef = useRef(0);
@@ -503,6 +509,19 @@ const FilterScreen = () => {
       items,
     }));
   }, [filterShowTimesData]);
+  const filteredGroupedShowTimes = useMemo(() => {
+    const query = searchFilterText.toLowerCase().replace(/\s+/g, '');
+    if (!query) return groupedShowTimes;
+    return groupedShowTimes.filter(
+      item =>
+        item.title.toLowerCase().replace(/\s+/g, '').includes(query) ||
+        (item.title_en ?? '').toLowerCase().replace(/\s+/g, '').includes(query),
+    );
+  }, [groupedShowTimes, searchFilterText]);
+  const shouldShowSearchSkeleton =
+    searchFilterText.length > 0 &&
+    !hasSubmittedSearch &&
+    filteredGroupedShowTimes.length === 0;
   const ticketGenreValue = isAllGenreSelected
     ? ALL_GENRE_TITLE
     : selectedGenreTitles[0] ?? ALL_GENRE_TITLE;
@@ -563,12 +582,20 @@ const FilterScreen = () => {
     outputRange: [headerNaturalHeight, 0],
   });
   const headerAnimatedOpacity = headerCollapseProgress.interpolate({
-    inputRange: [0, 0.5, 1],
+    inputRange: [0, 0.4, 1],
     outputRange: [1, 0, 0],
   });
   const ticketSafeAreaPadding = headerCollapseProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, insets.top],
+  });
+  const searchBarOpacity = headerCollapseProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+  const searchBarAnimatedHeight = headerCollapseProgress.interpolate({
+    inputRange: [0, 0.6, 1],
+    outputRange: [0, 0, 54],
   });
   const skeletonOpacity = skeletonAnimation.interpolate({
     inputRange: [0, 1],
@@ -793,6 +820,12 @@ const FilterScreen = () => {
     const enteringSearch = !isSearchMode;
     setIsSearchMode(enteringSearch);
 
+    if (!enteringSearch) {
+      searchInputRef.current?.blur();
+      setHasSubmittedSearch(false);
+      setTimeout(() => setSearchFilterText(''), 320);
+    }
+
     if (enteringSearch) {
       setIsFloatingActionExpanded(false);
       shimmerAnimation.setValue(0);
@@ -905,6 +938,13 @@ const FilterScreen = () => {
   }, [isSearchMode, headerCollapseProgress]);
 
   useEffect(() => {
+    if (isSearchMode) {
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 320);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchMode]);
+
+  useEffect(() => {
     if (!isFilterLoading) {
       skeletonAnimation.stopAnimation();
       skeletonAnimation.setValue(0);
@@ -929,6 +969,10 @@ const FilterScreen = () => {
     loop.start();
     return () => loop.stop();
   }, [isFilterLoading, skeletonAnimation]);
+
+  useEffect(() => {
+    setHasSubmittedSearch(false);
+  }, [searchFilterText, isSearchMode]);
 
   return (
     <GradientView style={styles.container}>
@@ -1053,6 +1097,35 @@ const FilterScreen = () => {
             ))}
           </View>
         </Animated.View>
+      </Animated.View>
+      <Animated.View
+        pointerEvents={
+          isSearchMode && groupedShowTimes.length > 0 ? 'auto' : 'none'
+        }
+        style={{
+          maxHeight: groupedShowTimes.length > 0 ? searchBarAnimatedHeight : 0,
+          opacity: groupedShowTimes.length > 0 ? searchBarOpacity : 0,
+          overflow: 'hidden',
+        }}
+      >
+        <View style={styles.searchBarContainer}>
+          <TextInput
+            ref={searchInputRef}
+            value={searchFilterText}
+            onChangeText={setSearchFilterText}
+            placeholder="搜尋電影名稱..."
+            placeholderTextColor="#5A5248"
+            style={styles.searchBarInput}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            onSubmitEditing={() => setHasSubmittedSearch(true)}
+          />
+          <View style={styles.filmStripRow}>
+            {Array.from({ length: 22 }).map((_, i) => (
+              <View key={i} style={styles.filmHole} />
+            ))}
+          </View>
+        </View>
       </Animated.View>
       <View style={{ flex: 1 }}>
         <Animated.View
@@ -1301,8 +1374,9 @@ const FilterScreen = () => {
           style={[StyleSheet.absoluteFill, { opacity: searchContentOpacity }]}
         >
           <ShowTimeResultsList
-            groupedShowTimes={groupedShowTimes}
+            groupedShowTimes={filteredGroupedShowTimes}
             isFilterLoading={isFilterLoading}
+            isTyping={shouldShowSearchSkeleton}
             hasData={Boolean(filterShowTimesData)}
             skeletonOpacity={skeletonOpacity}
             onMoviePress={handleOpenMovieModal}
@@ -2042,6 +2116,18 @@ const styles = StyleSheet.create({
   skeletonLine: {
     backgroundColor: 'rgba(198,160,94,0.18)',
     borderRadius: 4,
+  },
+  searchBarContainer: {
+    backgroundColor: '#1C1915',
+  },
+  searchBarInput: {
+    backgroundColor: '#1C1915',
+    color: '#F0E0C1',
+    fontFamily: FONT_FAMILY.inter18Light,
+    fontSize: 15,
+    height: 44,
+    paddingHorizontal: 24,
+    width: '100%',
   },
   showTimeTitlePressable: {
     borderRadius: 6,
