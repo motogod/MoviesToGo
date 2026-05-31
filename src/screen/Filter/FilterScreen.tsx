@@ -937,12 +937,6 @@ const FilterScreen = () => {
     }).start();
   }, [isSearchMode, headerCollapseProgress]);
 
-  useEffect(() => {
-    if (isSearchMode) {
-      const timer = setTimeout(() => searchInputRef.current?.focus(), 320);
-      return () => clearTimeout(timer);
-    }
-  }, [isSearchMode]);
 
   useEffect(() => {
     if (!isFilterLoading) {
@@ -1119,6 +1113,11 @@ const FilterScreen = () => {
             returnKeyType="search"
             clearButtonMode="while-editing"
             onSubmitEditing={() => setHasSubmittedSearch(true)}
+            onBlur={() => {
+              if (searchFilterText.length > 0) {
+                setHasSubmittedSearch(true);
+              }
+            }}
           />
           <View style={styles.filmStripRow}>
             {Array.from({ length: 22 }).map((_, i) => (
